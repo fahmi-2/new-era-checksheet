@@ -35,7 +35,7 @@ export default function RootLayout({
   children: React.ReactNode
 }>) {
   return (
-    <html lang="id">
+    <html lang="id" className="bg-background">
       <head>
         <meta charSet="utf-8" />
         <meta name="theme-color" content="#1e88e5" />
