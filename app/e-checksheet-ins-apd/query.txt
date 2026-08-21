@@ -1,0 +1,587 @@
+-- STEP 2: Insert Areas
+INSERT INTO ga_checksheet_areas (type_id, no, name, location, is_active) VALUES
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 1, 'PRE ASSY AREA GENBA C (Produksi) ○ Produksi', 'Produksi', TRUE),
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 2, 'PRE ASSY GENBA A+B (Produksi) ○ Produksi', 'Produksi', TRUE),
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 3, 'AREA FINAL ASSY (Produksi) ○ Produksi', 'Produksi', TRUE),
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 4, 'AREA CUTTING TUBE (Produksi) ○ Produksi', 'Produksi', TRUE),
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 5, 'INSPEKSI PRE ASSY AREA GENBA C (QA) ○ QA', 'QA', TRUE),
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 6, 'INSPEKSI PRE ASSY GENBA A+B (QA) ○ QA', 'QA', TRUE),
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 7, 'AREA INSPEKSI FINAL ASSY (QA) ○ QA', 'QA', TRUE),
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 8, 'AREA WAREHOUSE ○ Gudang', 'Gudang', TRUE),
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 9, 'AREA EXIM ○ Gudang', 'Gudang', TRUE),
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 10, 'AREA WORKSHOP ○ Maintenance', 'Maintenance', TRUE),
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 11, 'AREA UTILITY ○ Utilitas', 'Utilitas', TRUE),
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 12, 'AREA RECEIVING INSPECTION MATERIAL ○ Logistik', 'Logistik', TRUE),
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 13, 'AREA VOLTAGE TEST ○ Produksi', 'Produksi', TRUE);
+
+-- STEP 3: Insert Checklist Items
+
+-- PRE ASSY AREA GENBA C (Produksi)
+INSERT INTO ga_checksheet_items (type_id, item_key, no, item_group, item_check, method, sort_order, is_active) VALUES
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA01_PROSES01', 1, 'PROSES', 'BONDER', 'Visual', 1, TRUE);
+INSERT INTO ga_checksheet_items (type_id, item_key, no, item_group, item_check, method, sort_order, is_active) VALUES
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA01_PROSES01_APD01', 1, 'AREA01_PROSES01', 'Masker kain', 'Visual', 2, TRUE),
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA01_PROSES01_APD02', 2, 'AREA01_PROSES01', 'Masker kain', 'Visual', 3, TRUE);
+
+INSERT INTO ga_checksheet_items (type_id, item_key, no, item_group, item_check, method, sort_order, is_active) VALUES
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA01_PROSES02', 2, 'PROSES', 'RAYCHEM', 'Visual', 4, TRUE);
+INSERT INTO ga_checksheet_items (type_id, item_key, no, item_group, item_check, method, sort_order, is_active) VALUES
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA01_PROSES02_APD01', 1, 'AREA01_PROSES02', 'Sarung tangan nitrile', 'Visual', 5, TRUE),
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA01_PROSES02_APD02', 2, 'AREA01_PROSES02', 'Sarung tangan katun', 'Visual', 6, TRUE),
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA01_PROSES02_APD03', 3, 'AREA01_PROSES02', 'Masker 3M (Respiratory)', 'Visual', 7, TRUE),
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA01_PROSES02_APD04', 4, 'AREA01_PROSES02', 'Celemek', 'Visual', 8, TRUE),
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA01_PROSES02_APD05', 5, 'AREA01_PROSES02', 'Kacamata bening', 'Visual', 9, TRUE);
+
+INSERT INTO ga_checksheet_items (type_id, item_key, no, item_group, item_check, method, sort_order, is_active) VALUES
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA01_PROSES03', 3, 'PROSES', 'RAYCHEM (NON ALPHA)', 'Visual', 10, TRUE);
+INSERT INTO ga_checksheet_items (type_id, item_key, no, item_group, item_check, method, sort_order, is_active) VALUES
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA01_PROSES03_APD01', 1, 'AREA01_PROSES03', 'Masker FKA', 'Visual', 11, TRUE),
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA01_PROSES03_APD02', 2, 'AREA01_PROSES03', 'Sarung tangan nitrile', 'Visual', 12, TRUE);
+
+INSERT INTO ga_checksheet_items (type_id, item_key, no, item_group, item_check, method, sort_order, is_active) VALUES
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA01_PROSES04', 4, 'PROSES', 'HEAT SHRINK', 'Visual', 13, TRUE);
+INSERT INTO ga_checksheet_items (type_id, item_key, no, item_group, item_check, method, sort_order, is_active) VALUES
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA01_PROSES04_APD01', 1, 'AREA01_PROSES04', 'Masker kain', 'Visual', 14, TRUE),
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA01_PROSES04_APD02', 2, 'AREA01_PROSES04', 'Sarung tangan nitrile', 'Visual', 15, TRUE);
+
+INSERT INTO ga_checksheet_items (type_id, item_key, no, item_group, item_check, method, sort_order, is_active) VALUES
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA01_PROSES05', 5, 'PROSES', 'CASTING', 'Visual', 16, TRUE);
+INSERT INTO ga_checksheet_items (type_id, item_key, no, item_group, item_check, method, sort_order, is_active) VALUES
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA01_PROSES05_APD01', 1, 'AREA01_PROSES05', 'Back support', 'Visual', 17, TRUE);
+
+INSERT INTO ga_checksheet_items (type_id, item_key, no, item_group, item_check, method, sort_order, is_active) VALUES
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA01_PROSES06', 6, 'PROSES', 'CUTTING', 'Visual', 18, TRUE);
+INSERT INTO ga_checksheet_items (type_id, item_key, no, item_group, item_check, method, sort_order, is_active) VALUES
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA01_PROSES06_APD01', 1, 'AREA01_PROSES06', 'Back support', 'Visual', 19, TRUE),
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA01_PROSES06_APD02', 2, 'AREA01_PROSES06', 'Back support', 'Visual', 20, TRUE),
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA01_PROSES06_APD03', 3, 'AREA01_PROSES06', 'Back support', 'Visual', 21, TRUE),
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA01_PROSES06_APD04', 4, 'AREA01_PROSES06', 'Back support', 'Visual', 22, TRUE),
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA01_PROSES06_APD05', 5, 'AREA01_PROSES06', 'Back support', 'Visual', 23, TRUE),
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA01_PROSES06_APD06', 6, 'AREA01_PROSES06', 'Ear Plug', 'Visual', 24, TRUE),
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA01_PROSES06_APD07', 7, 'AREA01_PROSES06', 'Back support', 'Visual', 25, TRUE),
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA01_PROSES06_APD08', 8, 'AREA01_PROSES06', 'Ear Plug', 'Visual', 26, TRUE);
+
+-- PRE ASSY GENBA A+B (Produksi)
+INSERT INTO ga_checksheet_items (type_id, item_key, no, item_group, item_check, method, sort_order, is_active) VALUES
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA02_PROSES01', 1, 'PROSES', 'RAYCHEM', 'Visual', 27, TRUE);
+INSERT INTO ga_checksheet_items (type_id, item_key, no, item_group, item_check, method, sort_order, is_active) VALUES
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA02_PROSES01_APD01', 1, 'AREA02_PROSES01', 'Sarung tangan nitrile', 'Visual', 28, TRUE),
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA02_PROSES01_APD02', 2, 'AREA02_PROSES01', 'Masker 3M (Respiratory)', 'Visual', 29, TRUE),
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA02_PROSES01_APD03', 3, 'AREA02_PROSES01', 'Celemek', 'Visual', 30, TRUE),
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA02_PROSES01_APD04', 4, 'AREA02_PROSES01', 'Kacamata bening', 'Visual', 31, TRUE),
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA02_PROSES01_APD05', 5, 'AREA02_PROSES01', 'Sarung tangan nitrile', 'Visual', 32, TRUE),
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA02_PROSES01_APD06', 6, 'AREA02_PROSES01', 'Masker 3M (Respiratory)', 'Visual', 33, TRUE),
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA02_PROSES01_APD07', 7, 'AREA02_PROSES01', 'Celemek', 'Visual', 34, TRUE),
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA02_PROSES01_APD08', 8, 'AREA02_PROSES01', 'Kacamata bening', 'Visual', 35, TRUE);
+
+INSERT INTO ga_checksheet_items (type_id, item_key, no, item_group, item_check, method, sort_order, is_active) VALUES
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA02_PROSES02', 2, 'PROSES', 'RAYCHEM NON ALPHA', 'Visual', 36, TRUE);
+INSERT INTO ga_checksheet_items (type_id, item_key, no, item_group, item_check, method, sort_order, is_active) VALUES
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA02_PROSES02_APD01', 1, 'AREA02_PROSES02', 'Masker FKA', 'Visual', 37, TRUE),
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA02_PROSES02_APD02', 2, 'AREA02_PROSES02', 'Sarung tangan nitrile', 'Visual', 38, TRUE),
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA02_PROSES02_APD03', 3, 'AREA02_PROSES02', 'Masker kain', 'Visual', 39, TRUE),
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA02_PROSES02_APD04', 4, 'AREA02_PROSES02', 'Sarung tangan nitrile', 'Visual', 40, TRUE);
+
+INSERT INTO ga_checksheet_items (type_id, item_key, no, item_group, item_check, method, sort_order, is_active) VALUES
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA02_PROSES03', 3, 'PROSES', 'GUN SOLDER (AMERICAN BEAUTY)', 'Visual', 41, TRUE);
+INSERT INTO ga_checksheet_items (type_id, item_key, no, item_group, item_check, method, sort_order, is_active) VALUES
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA02_PROSES03_APD01', 1, 'AREA02_PROSES03', 'Kacamata bening', 'Visual', 42, TRUE),
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA02_PROSES03_APD02', 2, 'AREA02_PROSES03', 'Masker FKA', 'Visual', 43, TRUE),
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA02_PROSES03_APD03', 3, 'AREA02_PROSES03', 'Sarung tangan nitrile', 'Visual', 44, TRUE),
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA02_PROSES03_APD04', 4, 'AREA02_PROSES03', 'Celemek', 'Visual', 45, TRUE);
+
+INSERT INTO ga_checksheet_items (type_id, item_key, no, item_group, item_check, method, sort_order, is_active) VALUES
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA02_PROSES04', 4, 'PROSES', 'DIP SOLDER', 'Visual', 46, TRUE);
+INSERT INTO ga_checksheet_items (type_id, item_key, no, item_group, item_check, method, sort_order, is_active) VALUES
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA02_PROSES04_APD01', 1, 'AREA02_PROSES04', 'Sarung tangan kulit', 'Visual', 47, TRUE),
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA02_PROSES04_APD02', 2, 'AREA02_PROSES04', 'Sarung tangan katun', 'Visual', 48, TRUE),
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA02_PROSES04_APD03', 3, 'AREA02_PROSES04', 'Masker FKA', 'Visual', 49, TRUE),
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA02_PROSES04_APD04', 4, 'AREA02_PROSES04', 'Topeng Gerinda', 'Visual', 50, TRUE),
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA02_PROSES04_APD05', 5, 'AREA02_PROSES04', 'Celemek', 'Visual', 51, TRUE),
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA02_PROSES04_APD06', 6, 'AREA02_PROSES04', 'Sleave', 'Visual', 52, TRUE);
+
+INSERT INTO ga_checksheet_items (type_id, item_key, no, item_group, item_check, method, sort_order, is_active) VALUES
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA02_PROSES05', 5, 'PROSES', 'BONDER (200D)', 'Visual', 53, TRUE);
+INSERT INTO ga_checksheet_items (type_id, item_key, no, item_group, item_check, method, sort_order, is_active) VALUES
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA02_PROSES05_APD01', 1, 'AREA02_PROSES05', 'Masker FKA', 'Visual', 54, TRUE),
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA02_PROSES05_APD02', 2, 'AREA02_PROSES05', 'BONDER (900B) + DFM', 'Visual', 55, TRUE),
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA02_PROSES05_APD03', 3, 'AREA02_PROSES05', 'Masker FKA', 'Visual', 56, TRUE),
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA02_PROSES05_APD04', 4, 'AREA02_PROSES05', 'BONDER', 'Visual', 57, TRUE),
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA02_PROSES05_APD05', 5, 'AREA02_PROSES05', 'Masker FKA', 'Visual', 58, TRUE);
+
+INSERT INTO ga_checksheet_items (type_id, item_key, no, item_group, item_check, method, sort_order, is_active) VALUES
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA02_PROSES06', 6, 'PROSES', 'BONDER MINIC MN20 (200D)', 'Visual', 59, TRUE);
+INSERT INTO ga_checksheet_items (type_id, item_key, no, item_group, item_check, method, sort_order, is_active) VALUES
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA02_PROSES06_APD01', 1, 'AREA02_PROSES06', 'Masker FKA', 'Visual', 60, TRUE),
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA02_PROSES06_APD02', 2, 'AREA02_PROSES06', 'Masker FKA', 'Visual', 61, TRUE),
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA02_PROSES06_APD03', 3, 'AREA02_PROSES06', 'Masker FKA', 'Visual', 62, TRUE);
+
+INSERT INTO ga_checksheet_items (type_id, item_key, no, item_group, item_check, method, sort_order, is_active) VALUES
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA02_PROSES07', 7, 'PROSES', 'ANTI KOROSI (EJ30 & EJ35)', 'Visual', 63, TRUE);
+INSERT INTO ga_checksheet_items (type_id, item_key, no, item_group, item_check, method, sort_order, is_active) VALUES
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA02_PROSES07_APD01', 1, 'AREA02_PROSES07', 'Sarung tangan Anti UV', 'Visual', 64, TRUE),
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA02_PROSES07_APD02', 2, 'AREA02_PROSES07', 'Masker FKA', 'Visual', 65, TRUE),
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA02_PROSES07_APD03', 3, 'AREA02_PROSES07', 'Kacamata/Face shield Anti UV', 'Visual', 66, TRUE),
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA02_PROSES07_APD04', 4, 'AREA02_PROSES07', 'Celemek', 'Visual', 67, TRUE),
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA02_PROSES07_APD05', 5, 'AREA02_PROSES07', 'Sarung tangan Anti UV', 'Visual', 68, TRUE),
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA02_PROSES07_APD06', 6, 'AREA02_PROSES07', 'Masker FKA', 'Visual', 69, TRUE),
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA02_PROSES07_APD07', 7, 'AREA02_PROSES07', 'Kacamata/Face shield Anti UV', 'Visual', 70, TRUE),
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA02_PROSES07_APD08', 8, 'AREA02_PROSES07', 'Celemek', 'Visual', 71, TRUE),
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA02_PROSES07_APD09', 9, 'AREA02_PROSES07', 'Sarung tangan Anti UV', 'Visual', 72, TRUE),
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA02_PROSES07_APD10', 10, 'AREA02_PROSES07', 'Masker FKA', 'Visual', 73, TRUE),
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA02_PROSES07_APD11', 11, 'AREA02_PROSES07', 'Kacamata/Face shield Anti UV', 'Visual', 74, TRUE),
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA02_PROSES07_APD12', 12, 'AREA02_PROSES07', 'Celemek', 'Visual', 75, TRUE);
+
+INSERT INTO ga_checksheet_items (type_id, item_key, no, item_group, item_check, method, sort_order, is_active) VALUES
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA02_PROSES08', 8, 'PROSES', 'HEAT SHRINK', 'Visual', 76, TRUE);
+INSERT INTO ga_checksheet_items (type_id, item_key, no, item_group, item_check, method, sort_order, is_active) VALUES
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA02_PROSES08_APD01', 1, 'AREA02_PROSES08', 'Masker  FKA', 'Visual', 77, TRUE),
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA02_PROSES08_APD02', 2, 'AREA02_PROSES08', 'Sarung tangan nitrile', 'Visual', 78, TRUE),
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA02_PROSES08_APD03', 3, 'AREA02_PROSES08', 'Masker FKA', 'Visual', 79, TRUE),
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA02_PROSES08_APD04', 4, 'AREA02_PROSES08', 'Sarung tangan nitrile', 'Visual', 80, TRUE);
+
+INSERT INTO ga_checksheet_items (type_id, item_key, no, item_group, item_check, method, sort_order, is_active) VALUES
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA02_PROSES09', 9, 'PROSES', 'CUTTING :', 'Visual', 81, TRUE);
+INSERT INTO ga_checksheet_items (type_id, item_key, no, item_group, item_check, method, sort_order, is_active) VALUES
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA02_PROSES09_APD01', 1, 'AREA02_PROSES09', 'Nissan (Genba A)', 'Visual', 82, TRUE),
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA02_PROSES09_APD02', 2, 'AREA02_PROSES09', 'Back support', 'Visual', 83, TRUE),
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA02_PROSES09_APD03', 3, 'AREA02_PROSES09', 'Nissan (Genba B)', 'Visual', 84, TRUE),
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA02_PROSES09_APD04', 4, 'AREA02_PROSES09', 'Back support', 'Visual', 85, TRUE),
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA02_PROSES09_APD05', 5, 'AREA02_PROSES09', 'Back support', 'Visual', 86, TRUE),
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA02_PROSES09_APD06', 6, 'AREA02_PROSES09', 'Mazda', 'Visual', 87, TRUE),
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA02_PROSES09_APD07', 7, 'AREA02_PROSES09', 'Back support', 'Visual', 88, TRUE),
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA02_PROSES09_APD08', 8, 'AREA02_PROSES09', 'Back support', 'Visual', 89, TRUE),
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA02_PROSES09_APD09', 9, 'AREA02_PROSES09', 'Back support', 'Visual', 90, TRUE),
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA02_PROSES09_APD10', 10, 'AREA02_PROSES09', 'Back support', 'Visual', 91, TRUE),
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA02_PROSES09_APD11', 11, 'AREA02_PROSES09', 'Back support', 'Visual', 92, TRUE),
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA02_PROSES09_APD12', 12, 'AREA02_PROSES09', 'Back support', 'Visual', 93, TRUE),
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA02_PROSES09_APD13', 13, 'AREA02_PROSES09', 'Back support', 'Visual', 94, TRUE),
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA02_PROSES09_APD14', 14, 'AREA02_PROSES09', 'Back support', 'Visual', 95, TRUE),
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA02_PROSES09_APD15', 15, 'AREA02_PROSES09', 'Back support', 'Visual', 96, TRUE),
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA02_PROSES09_APD16', 16, 'AREA02_PROSES09', '900B & 200D', 'Visual', 97, TRUE),
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA02_PROSES09_APD17', 17, 'AREA02_PROSES09', 'Back support', 'Visual', 98, TRUE),
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA02_PROSES09_APD18', 18, 'AREA02_PROSES09', 'Back support', 'Visual', 99, TRUE),
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA02_PROSES09_APD19', 19, 'AREA02_PROSES09', 'Back support', 'Visual', 100, TRUE),
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA02_PROSES09_APD20', 20, 'AREA02_PROSES09', 'Back support', 'Visual', 101, TRUE),
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA02_PROSES09_APD21', 21, 'AREA02_PROSES09', 'Back support', 'Visual', 102, TRUE),
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA02_PROSES09_APD22', 22, 'AREA02_PROSES09', 'Back support', 'Visual', 103, TRUE);
+
+INSERT INTO ga_checksheet_items (type_id, item_key, no, item_group, item_check, method, sort_order, is_active) VALUES
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA02_PROSES10', 10, 'PROSES', 'TRANSFORTER', 'Visual', 104, TRUE);
+INSERT INTO ga_checksheet_items (type_id, item_key, no, item_group, item_check, method, sort_order, is_active) VALUES
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA02_PROSES10_APD01', 1, 'AREA02_PROSES10', 'Topi pelindung', 'Visual', 105, TRUE);
+
+INSERT INTO ga_checksheet_items (type_id, item_key, no, item_group, item_check, method, sort_order, is_active) VALUES
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA02_PROSES11', 11, 'PROSES', 'CASTING', 'Visual', 106, TRUE);
+INSERT INTO ga_checksheet_items (type_id, item_key, no, item_group, item_check, method, sort_order, is_active) VALUES
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA02_PROSES11_APD01', 1, 'AREA02_PROSES11', 'Back support', 'Visual', 107, TRUE),
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA02_PROSES11_APD02', 2, 'AREA02_PROSES11', 'Back support', 'Visual', 108, TRUE),
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA02_PROSES11_APD03', 3, 'AREA02_PROSES11', 'Back support', 'Visual', 109, TRUE),
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA02_PROSES11_APD04', 4, 'AREA02_PROSES11', 'Back support', 'Visual', 110, TRUE),
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA02_PROSES11_APD05', 5, 'AREA02_PROSES11', 'Sarung tangan PU', 'Visual', 111, TRUE),
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA02_PROSES11_APD06', 6, 'AREA02_PROSES11', 'Safety Shoes', 'Visual', 112, TRUE);
+
+-- AREA FINAL ASSY (Produksi)
+INSERT INTO ga_checksheet_items (type_id, item_key, no, item_group, item_check, method, sort_order, is_active) VALUES
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA03_PROSES01', 1, 'PROSES', 'INJECTION GROMET', 'Visual', 113, TRUE);
+INSERT INTO ga_checksheet_items (type_id, item_key, no, item_group, item_check, method, sort_order, is_active) VALUES
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA03_PROSES01_APD01', 1, 'AREA03_PROSES01', 'Sarung tangan nitrile', 'Visual', 114, TRUE),
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA03_PROSES01_APD02', 2, 'AREA03_PROSES01', 'Masker FKA', 'Visual', 115, TRUE),
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA03_PROSES01_APD03', 3, 'AREA03_PROSES01', 'Celemek', 'Visual', 116, TRUE),
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA03_PROSES01_APD04', 4, 'AREA03_PROSES01', 'Kacamata bening', 'Visual', 117, TRUE);
+
+INSERT INTO ga_checksheet_items (type_id, item_key, no, item_group, item_check, method, sort_order, is_active) VALUES
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA03_PROSES02', 2, 'PROSES', 'SISUI', 'Visual', 118, TRUE);
+INSERT INTO ga_checksheet_items (type_id, item_key, no, item_group, item_check, method, sort_order, is_active) VALUES
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA03_PROSES02_APD01', 1, 'AREA03_PROSES02', 'Topi pelindung', 'Visual', 119, TRUE),
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA03_PROSES02_APD02', 2, 'AREA03_PROSES02', 'Kacamata bening (u/ pengambilan sample)', 'Visual', 120, TRUE),
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA03_PROSES02_APD03', 3, 'AREA03_PROSES02', 'Celemek', 'Visual', 121, TRUE),
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA03_PROSES02_APD04', 4, 'AREA03_PROSES02', 'Topi pelindung', 'Visual', 122, TRUE),
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA03_PROSES02_APD05', 5, 'AREA03_PROSES02', 'Kacamata bening (u/ pengambian sample)', 'Visual', 123, TRUE),
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA03_PROSES02_APD06', 6, 'AREA03_PROSES02', 'Celemek', 'Visual', 124, TRUE),
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA03_PROSES02_APD07', 7, 'AREA03_PROSES02', 'Topi pelindung', 'Visual', 125, TRUE),
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA03_PROSES02_APD08', 8, 'AREA03_PROSES02', 'Kacamata bening (u/ pengambian sample)', 'Visual', 126, TRUE),
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA03_PROSES02_APD09', 9, 'AREA03_PROSES02', 'Celemek', 'Visual', 127, TRUE);
+
+INSERT INTO ga_checksheet_items (type_id, item_key, no, item_group, item_check, method, sort_order, is_active) VALUES
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA03_PROSES03', 3, 'PROSES', 'SUB ASSY', 'Visual', 128, TRUE);
+INSERT INTO ga_checksheet_items (type_id, item_key, no, item_group, item_check, method, sort_order, is_active) VALUES
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA03_PROSES03_APD01', 1, 'AREA03_PROSES03', 'Sarung tangan PU', 'Visual', 129, TRUE);
+
+INSERT INTO ga_checksheet_items (type_id, item_key, no, item_group, item_check, method, sort_order, is_active) VALUES
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA03_PROSES04', 4, 'PROSES', 'EXPANDER GROMMET', 'Visual', 130, TRUE);
+INSERT INTO ga_checksheet_items (type_id, item_key, no, item_group, item_check, method, sort_order, is_active) VALUES
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA03_PROSES04_APD01', 1, 'AREA03_PROSES04', 'Sarung tangan nitrile', 'Visual', 131, TRUE),
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA03_PROSES04_APD02', 2, 'AREA03_PROSES04', 'Back support', 'Visual', 132, TRUE),
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA03_PROSES04_APD03', 3, 'AREA03_PROSES04', 'Sarung tangan nitrile', 'Visual', 133, TRUE),
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA03_PROSES04_APD04', 4, 'AREA03_PROSES04', 'Back support', 'Visual', 134, TRUE);
+
+INSERT INTO ga_checksheet_items (type_id, item_key, no, item_group, item_check, method, sort_order, is_active) VALUES
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA03_PROSES05', 5, 'PROSES', 'SP (AB1)', 'Visual', 135, TRUE);
+INSERT INTO ga_checksheet_items (type_id, item_key, no, item_group, item_check, method, sort_order, is_active) VALUES
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA03_PROSES05_APD01', 1, 'AREA03_PROSES05', 'Topi pelindung', 'Visual', 136, TRUE),
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA03_PROSES05_APD02', 2, 'AREA03_PROSES05', 'Sarung tangan PU', 'Visual', 137, TRUE),
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA03_PROSES05_APD03', 3, 'AREA03_PROSES05', 'Topi pelindung', 'Visual', 138, TRUE);
+
+INSERT INTO ga_checksheet_items (type_id, item_key, no, item_group, item_check, method, sort_order, is_active) VALUES
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA03_PROSES06', 6, 'PROSES', 'VACUUM', 'Visual', 139, TRUE);
+INSERT INTO ga_checksheet_items (type_id, item_key, no, item_group, item_check, method, sort_order, is_active) VALUES
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA03_PROSES06_APD01', 1, 'AREA03_PROSES06', 'Ear plug', 'Visual', 140, TRUE);
+
+INSERT INTO ga_checksheet_items (type_id, item_key, no, item_group, item_check, method, sort_order, is_active) VALUES
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA03_PROSES07', 7, 'PROSES', 'SIAGE', 'Visual', 141, TRUE);
+INSERT INTO ga_checksheet_items (type_id, item_key, no, item_group, item_check, method, sort_order, is_active) VALUES
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA03_PROSES07_APD01', 1, 'AREA03_PROSES07', 'Back support', 'Visual', 142, TRUE),
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA03_PROSES07_APD02', 2, 'AREA03_PROSES07', 'Sarung tangan PU', 'Visual', 143, TRUE),
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA03_PROSES07_APD03', 3, 'AREA03_PROSES07', 'Back support', 'Visual', 144, TRUE),
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA03_PROSES07_APD04', 4, 'AREA03_PROSES07', 'Sarung tangan PU', 'Visual', 145, TRUE),
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA03_PROSES07_APD05', 5, 'AREA03_PROSES07', 'Back support', 'Visual', 146, TRUE),
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA03_PROSES07_APD06', 6, 'AREA03_PROSES07', 'Sarung tangan PU', 'Visual', 147, TRUE),
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA03_PROSES07_APD07', 7, 'AREA03_PROSES07', 'Back support', 'Visual', 148, TRUE),
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA03_PROSES07_APD08', 8, 'AREA03_PROSES07', 'Sarung tangan PU', 'Visual', 149, TRUE),
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA03_PROSES07_APD09', 9, 'AREA03_PROSES07', 'Back support', 'Visual', 150, TRUE),
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA03_PROSES07_APD10', 10, 'AREA03_PROSES07', 'Sarung tangan PU', 'Visual', 151, TRUE);
+
+INSERT INTO ga_checksheet_items (type_id, item_key, no, item_group, item_check, method, sort_order, is_active) VALUES
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA03_PROSES08', 8, 'PROSES', 'Taping', 'Visual', 152, TRUE);
+INSERT INTO ga_checksheet_items (type_id, item_key, no, item_group, item_check, method, sort_order, is_active) VALUES
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA03_PROSES08_APD01', 1, 'AREA03_PROSES08', 'Sarung tangan', 'Visual', 153, TRUE),
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA03_PROSES08_APD02', 2, 'AREA03_PROSES08', 'Sarung tangan', 'Visual', 154, TRUE),
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA03_PROSES08_APD03', 3, 'AREA03_PROSES08', 'Sarung tangan', 'Visual', 155, TRUE),
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA03_PROSES08_APD04', 4, 'AREA03_PROSES08', 'Sarung tangan', 'Visual', 156, TRUE);
+
+INSERT INTO ga_checksheet_items (type_id, item_key, no, item_group, item_check, method, sort_order, is_active) VALUES
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA03_PROSES09', 9, 'PROSES', 'Offline', 'Visual', 157, TRUE);
+INSERT INTO ga_checksheet_items (type_id, item_key, no, item_group, item_check, method, sort_order, is_active) VALUES
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA03_PROSES09_APD01', 1, 'AREA03_PROSES09', 'Sarung tangan', 'Visual', 158, TRUE),
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA03_PROSES09_APD02', 2, 'AREA03_PROSES09', 'Sarung tangan', 'Visual', 159, TRUE),
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA03_PROSES09_APD03', 3, 'AREA03_PROSES09', 'Sarung tangan', 'Visual', 160, TRUE);
+
+-- AREA CUTTING TUBE (Produksi)
+INSERT INTO ga_checksheet_items (type_id, item_key, no, item_group, item_check, method, sort_order, is_active) VALUES
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA04_PROSES01', 1, 'PROSES', 'Rolling VO / CVO', 'Visual', 161, TRUE);
+INSERT INTO ga_checksheet_items (type_id, item_key, no, item_group, item_check, method, sort_order, is_active) VALUES
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA04_PROSES01_APD01', 1, 'AREA04_PROSES01', 'Masker FKA', 'Visual', 162, TRUE),
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA04_PROSES01_APD02', 2, 'AREA04_PROSES01', 'Celemek', 'Visual', 163, TRUE),
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA04_PROSES01_APD03', 3, 'AREA04_PROSES01', 'Sarung tangan katun', 'Visual', 164, TRUE);
+
+INSERT INTO ga_checksheet_items (type_id, item_key, no, item_group, item_check, method, sort_order, is_active) VALUES
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA04_PROSES02', 2, 'PROSES', 'Cutting Tape Manual Air Bag', 'Visual', 165, TRUE);
+INSERT INTO ga_checksheet_items (type_id, item_key, no, item_group, item_check, method, sort_order, is_active) VALUES
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA04_PROSES02_APD01', 1, 'AREA04_PROSES02', 'Sarung tangan cut resistance', 'Visual', 166, TRUE);
+
+INSERT INTO ga_checksheet_items (type_id, item_key, no, item_group, item_check, method, sort_order, is_active) VALUES
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA04_PROSES03', 3, 'PROSES', 'Cek COT, VO, CVO Manual', 'Visual', 167, TRUE);
+INSERT INTO ga_checksheet_items (type_id, item_key, no, item_group, item_check, method, sort_order, is_active) VALUES
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA04_PROSES03_APD01', 1, 'AREA04_PROSES03', 'ST. katun', 'Visual', 168, TRUE);
+
+INSERT INTO ga_checksheet_items (type_id, item_key, no, item_group, item_check, method, sort_order, is_active) VALUES
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA04_PROSES04', 4, 'PROSES', 'Cutting COT', 'Visual', 169, TRUE);
+INSERT INTO ga_checksheet_items (type_id, item_key, no, item_group, item_check, method, sort_order, is_active) VALUES
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA04_PROSES04_APD01', 1, 'AREA04_PROSES04', 'Sarung tangan katun', 'Visual', 170, TRUE),
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA04_PROSES04_APD02', 2, 'AREA04_PROSES04', 'Sarung tangan katun', 'Visual', 171, TRUE);
+
+INSERT INTO ga_checksheet_items (type_id, item_key, no, item_group, item_check, method, sort_order, is_active) VALUES
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA04_PROSES05', 5, 'PROSES', 'Cutting CVO', 'Visual', 172, TRUE);
+INSERT INTO ga_checksheet_items (type_id, item_key, no, item_group, item_check, method, sort_order, is_active) VALUES
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA04_PROSES05_APD01', 1, 'AREA04_PROSES05', 'Sarung tangan katun', 'Visual', 173, TRUE),
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA04_PROSES05_APD02', 2, 'AREA04_PROSES05', 'Masker kain', 'Visual', 174, TRUE),
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA04_PROSES05_APD03', 3, 'AREA04_PROSES05', 'Sarung tangan katun', 'Visual', 175, TRUE),
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA04_PROSES05_APD04', 4, 'AREA04_PROSES05', 'Masker kain', 'Visual', 176, TRUE);
+
+INSERT INTO ga_checksheet_items (type_id, item_key, no, item_group, item_check, method, sort_order, is_active) VALUES
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA04_PROSES06', 6, 'PROSES', 'Reuse wire', 'Visual', 177, TRUE);
+INSERT INTO ga_checksheet_items (type_id, item_key, no, item_group, item_check, method, sort_order, is_active) VALUES
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA04_PROSES06_APD01', 1, 'AREA04_PROSES06', 'Sarung tangan coating', 'Visual', 178, TRUE);
+
+INSERT INTO ga_checksheet_items (type_id, item_key, no, item_group, item_check, method, sort_order, is_active) VALUES
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA04_PROSES07', 7, 'PROSES', 'Rewinding', 'Visual', 179, TRUE);
+INSERT INTO ga_checksheet_items (type_id, item_key, no, item_group, item_check, method, sort_order, is_active) VALUES
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA04_PROSES07_APD01', 1, 'AREA04_PROSES07', 'Back support', 'Visual', 180, TRUE),
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA04_PROSES07_APD02', 2, 'AREA04_PROSES07', 'Sarung tangan bintil', 'Visual', 181, TRUE),
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA04_PROSES07_APD03', 3, 'AREA04_PROSES07', 'Safety shoes', 'Visual', 182, TRUE);
+
+INSERT INTO ga_checksheet_items (type_id, item_key, no, item_group, item_check, method, sort_order, is_active) VALUES
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA04_PROSES08', 8, 'PROSES', 'Giling & Kupas wire', 'Visual', 183, TRUE);
+INSERT INTO ga_checksheet_items (type_id, item_key, no, item_group, item_check, method, sort_order, is_active) VALUES
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA04_PROSES08_APD01', 1, 'AREA04_PROSES08', 'Sarung tangan bintil', 'Visual', 184, TRUE),
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA04_PROSES08_APD02', 2, 'AREA04_PROSES08', 'Kacamata', 'Visual', 185, TRUE),
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA04_PROSES08_APD03', 3, 'AREA04_PROSES08', 'Masker kain', 'Visual', 186, TRUE),
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA04_PROSES08_APD04', 4, 'AREA04_PROSES08', 'celemek (plastik)', 'Visual', 187, TRUE),
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA04_PROSES08_APD05', 5, 'AREA04_PROSES08', 'Sarung tangan nitrile', 'Visual', 188, TRUE);
+
+-- INSPEKSI PRE ASSY AREA GENBA C (QA)
+INSERT INTO ga_checksheet_items (type_id, item_key, no, item_group, item_check, method, sort_order, is_active) VALUES
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA05_PROSES01', 1, 'PROSES', 'INSP. WATER PROOF', 'Visual', 189, TRUE);
+INSERT INTO ga_checksheet_items (type_id, item_key, no, item_group, item_check, method, sort_order, is_active) VALUES
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA05_PROSES01_APD01', 1, 'AREA05_PROSES01', 'Ear plug', 'Visual', 190, TRUE),
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA05_PROSES01_APD02', 2, 'AREA05_PROSES01', 'Masker FKA', 'Visual', 191, TRUE);
+
+INSERT INTO ga_checksheet_items (type_id, item_key, no, item_group, item_check, method, sort_order, is_active) VALUES
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA05_PROSES02', 2, 'PROSES', 'INSP. CROSS SECTION', 'Visual', 192, TRUE);
+INSERT INTO ga_checksheet_items (type_id, item_key, no, item_group, item_check, method, sort_order, is_active) VALUES
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA05_PROSES02_APD01', 1, 'AREA05_PROSES02', 'Kacamata bening', 'Visual', 193, TRUE),
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA05_PROSES02_APD02', 2, 'AREA05_PROSES02', 'Masker FKA', 'Visual', 194, TRUE),
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA05_PROSES02_APD03', 3, 'AREA05_PROSES02', 'Sarung tangan PU', 'Visual', 195, TRUE);
+
+INSERT INTO ga_checksheet_items (type_id, item_key, no, item_group, item_check, method, sort_order, is_active) VALUES
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA05_PROSES03', 3, 'PROSES', 'INSP. BONDER & RAYCHEM', 'Visual', 196, TRUE);
+INSERT INTO ga_checksheet_items (type_id, item_key, no, item_group, item_check, method, sort_order, is_active) VALUES
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA05_PROSES03_APD01', 1, 'AREA05_PROSES03', 'Masker FKA', 'Visual', 197, TRUE),
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA05_PROSES03_APD02', 2, 'AREA05_PROSES03', 'Sarung tangan nitrile', 'Visual', 198, TRUE),
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA05_PROSES03_APD03', 3, 'AREA05_PROSES03', 'Celemek', 'Visual', 199, TRUE);
+
+INSERT INTO ga_checksheet_items (type_id, item_key, no, item_group, item_check, method, sort_order, is_active) VALUES
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA05_PROSES04', 4, 'PROSES', 'INSP. BONDER', 'Visual', 200, TRUE);
+INSERT INTO ga_checksheet_items (type_id, item_key, no, item_group, item_check, method, sort_order, is_active) VALUES
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA05_PROSES04_APD01', 1, 'AREA05_PROSES04', 'Masker FKA', 'Visual', 201, TRUE);
+
+INSERT INTO ga_checksheet_items (type_id, item_key, no, item_group, item_check, method, sort_order, is_active) VALUES
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA05_PROSES05', 5, 'PROSES', 'INSP. CUTTING', 'Visual', 202, TRUE);
+INSERT INTO ga_checksheet_items (type_id, item_key, no, item_group, item_check, method, sort_order, is_active) VALUES
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA05_PROSES05_APD01', 1, 'AREA05_PROSES05', 'Topi pelindung', 'Visual', 203, TRUE),
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA05_PROSES05_APD02', 2, 'AREA05_PROSES05', 'Topi pelindung', 'Visual', 204, TRUE);
+
+INSERT INTO ga_checksheet_items (type_id, item_key, no, item_group, item_check, method, sort_order, is_active) VALUES
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA05_PROSES06', 6, 'PROSES', 'RED INK & CROSS SECTION', 'Visual', 205, TRUE);
+INSERT INTO ga_checksheet_items (type_id, item_key, no, item_group, item_check, method, sort_order, is_active) VALUES
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA05_PROSES06_APD01', 1, 'AREA05_PROSES06', 'Masker FKA', 'Visual', 206, TRUE),
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA05_PROSES06_APD02', 2, 'AREA05_PROSES06', 'Sarung tangan PU', 'Visual', 207, TRUE),
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA05_PROSES06_APD03', 3, 'AREA05_PROSES06', 'Celemek', 'Visual', 208, TRUE),
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA05_PROSES06_APD04', 4, 'AREA05_PROSES06', 'Kacamata bening', 'Visual', 209, TRUE);
+
+INSERT INTO ga_checksheet_items (type_id, item_key, no, item_group, item_check, method, sort_order, is_active) VALUES
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA05_PROSES07', 7, 'PROSES', 'INSP. CUTTING AREA FTZ', 'Visual', 210, TRUE);
+INSERT INTO ga_checksheet_items (type_id, item_key, no, item_group, item_check, method, sort_order, is_active) VALUES
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA05_PROSES07_APD01', 1, 'AREA05_PROSES07', 'Ear plug', 'Visual', 211, TRUE);
+
+-- INSPEKSI PRE ASSY GENBA A+B (QA)
+INSERT INTO ga_checksheet_items (type_id, item_key, no, item_group, item_check, method, sort_order, is_active) VALUES
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA06_PROSES01', 1, 'PROSES', 'INSP. BONDER/MINIC + RAYCHEM/DIP SOLD', 'Visual', 212, TRUE);
+INSERT INTO ga_checksheet_items (type_id, item_key, no, item_group, item_check, method, sort_order, is_active) VALUES
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA06_PROSES01_APD01', 1, 'AREA06_PROSES01', 'Masker FKA', 'Visual', 213, TRUE),
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA06_PROSES01_APD02', 2, 'AREA06_PROSES01', 'Sarung tangan Nitril', 'Visual', 214, TRUE),
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA06_PROSES01_APD03', 3, 'AREA06_PROSES01', 'Masker FKA', 'Visual', 215, TRUE),
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA06_PROSES01_APD04', 4, 'AREA06_PROSES01', 'Sarung tangan Nitril', 'Visual', 216, TRUE),
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA06_PROSES01_APD05', 5, 'AREA06_PROSES01', 'Celemek', 'Visual', 217, TRUE);
+
+INSERT INTO ga_checksheet_items (type_id, item_key, no, item_group, item_check, method, sort_order, is_active) VALUES
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA06_PROSES02', 2, 'PROSES', 'INSP. CROSS SECTION', 'Visual', 218, TRUE);
+INSERT INTO ga_checksheet_items (type_id, item_key, no, item_group, item_check, method, sort_order, is_active) VALUES
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA06_PROSES02_APD01', 1, 'AREA06_PROSES02', 'Kacamata bening', 'Visual', 219, TRUE),
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA06_PROSES02_APD02', 2, 'AREA06_PROSES02', 'Masker FKA', 'Visual', 220, TRUE),
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA06_PROSES02_APD03', 3, 'AREA06_PROSES02', 'Celemek', 'Visual', 221, TRUE),
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA06_PROSES02_APD04', 4, 'AREA06_PROSES02', 'Sarung tangan Coating', 'Visual', 222, TRUE);
+
+INSERT INTO ga_checksheet_items (type_id, item_key, no, item_group, item_check, method, sort_order, is_active) VALUES
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA06_PROSES03', 3, 'PROSES', 'INSP. BONDER MINIC', 'Visual', 223, TRUE);
+INSERT INTO ga_checksheet_items (type_id, item_key, no, item_group, item_check, method, sort_order, is_active) VALUES
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA06_PROSES03_APD01', 1, 'AREA06_PROSES03', 'Masker FKA', 'Visual', 224, TRUE);
+
+INSERT INTO ga_checksheet_items (type_id, item_key, no, item_group, item_check, method, sort_order, is_active) VALUES
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA06_PROSES04', 4, 'PROSES', 'INSP. UV', 'Visual', 225, TRUE);
+INSERT INTO ga_checksheet_items (type_id, item_key, no, item_group, item_check, method, sort_order, is_active) VALUES
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA06_PROSES04_APD01', 1, 'AREA06_PROSES04', 'Face sheild', 'Visual', 226, TRUE),
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA06_PROSES04_APD02', 2, 'AREA06_PROSES04', 'Masker FKA', 'Visual', 227, TRUE),
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA06_PROSES04_APD03', 3, 'AREA06_PROSES04', 'Sarung tangan PU', 'Visual', 228, TRUE),
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA06_PROSES04_APD04', 4, 'AREA06_PROSES04', 'Celemek', 'Visual', 229, TRUE),
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA06_PROSES04_APD05', 5, 'AREA06_PROSES04', 'Face sheild', 'Visual', 230, TRUE),
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA06_PROSES04_APD06', 6, 'AREA06_PROSES04', 'Masker FKA', 'Visual', 231, TRUE),
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA06_PROSES04_APD07', 7, 'AREA06_PROSES04', 'Sarung tangan PU', 'Visual', 232, TRUE),
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA06_PROSES04_APD08', 8, 'AREA06_PROSES04', 'Celemek', 'Visual', 233, TRUE);
+
+INSERT INTO ga_checksheet_items (type_id, item_key, no, item_group, item_check, method, sort_order, is_active) VALUES
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA06_PROSES05', 5, 'PROSES', 'INSPECT & PACKING BATTERY CABLE', 'Visual', 234, TRUE);
+INSERT INTO ga_checksheet_items (type_id, item_key, no, item_group, item_check, method, sort_order, is_active) VALUES
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA06_PROSES05_APD01', 1, 'AREA06_PROSES05', 'Back support', 'Visual', 235, TRUE),
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA06_PROSES05_APD02', 2, 'AREA06_PROSES05', 'Back support', 'Visual', 236, TRUE);
+
+-- AREA INSPEKSI FINAL ASSY (QA)
+INSERT INTO ga_checksheet_items (type_id, item_key, no, item_group, item_check, method, sort_order, is_active) VALUES
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA07_PROSES01', 1, 'PROSES', 'DRY SURF (VISUAL II)', 'Visual', 237, TRUE);
+INSERT INTO ga_checksheet_items (type_id, item_key, no, item_group, item_check, method, sort_order, is_active) VALUES
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA07_PROSES01_APD01', 1, 'AREA07_PROSES01', 'Masker kain', 'Visual', 238, TRUE),
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA07_PROSES01_APD02', 2, 'AREA07_PROSES01', 'Sarung tangan PU', 'Visual', 239, TRUE),
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA07_PROSES01_APD03', 3, 'AREA07_PROSES01', 'Celemek', 'Visual', 240, TRUE),
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA07_PROSES01_APD04', 4, 'AREA07_PROSES01', 'Masker kain', 'Visual', 241, TRUE),
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA07_PROSES01_APD05', 5, 'AREA07_PROSES01', 'Sarung tangan PU', 'Visual', 242, TRUE),
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA07_PROSES01_APD06', 6, 'AREA07_PROSES01', 'Celemek', 'Visual', 243, TRUE),
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA07_PROSES01_APD07', 7, 'AREA07_PROSES01', 'Masker kain', 'Visual', 244, TRUE),
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA07_PROSES01_APD08', 8, 'AREA07_PROSES01', 'Sarung tangan katun', 'Visual', 245, TRUE),
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA07_PROSES01_APD09', 9, 'AREA07_PROSES01', 'Celemek', 'Visual', 246, TRUE);
+
+INSERT INTO ga_checksheet_items (type_id, item_key, no, item_group, item_check, method, sort_order, is_active) VALUES
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA07_PROSES02', 2, 'PROSES', 'PACKING', 'Visual', 247, TRUE);
+INSERT INTO ga_checksheet_items (type_id, item_key, no, item_group, item_check, method, sort_order, is_active) VALUES
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA07_PROSES02_APD01', 1, 'AREA07_PROSES02', 'Back Support', 'Visual', 248, TRUE),
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA07_PROSES02_APD02', 2, 'AREA07_PROSES02', 'Back Support', 'Visual', 249, TRUE),
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA07_PROSES02_APD03', 3, 'AREA07_PROSES02', 'Back Support', 'Visual', 250, TRUE),
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA07_PROSES02_APD04', 4, 'AREA07_PROSES02', 'Back Support', 'Visual', 251, TRUE),
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA07_PROSES02_APD05', 5, 'AREA07_PROSES02', 'Back Support', 'Visual', 252, TRUE);
+
+INSERT INTO ga_checksheet_items (type_id, item_key, no, item_group, item_check, method, sort_order, is_active) VALUES
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA07_PROSES03', 3, 'PROSES', 'WATER PROOF F/A', 'Visual', 253, TRUE);
+INSERT INTO ga_checksheet_items (type_id, item_key, no, item_group, item_check, method, sort_order, is_active) VALUES
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA07_PROSES03_APD01', 1, 'AREA07_PROSES03', 'Back Support', 'Visual', 254, TRUE);
+
+INSERT INTO ga_checksheet_items (type_id, item_key, no, item_group, item_check, method, sort_order, is_active) VALUES
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA07_PROSES04', 4, 'PROSES', 'CHECKER', 'Visual', 255, TRUE);
+INSERT INTO ga_checksheet_items (type_id, item_key, no, item_group, item_check, method, sort_order, is_active) VALUES
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA07_PROSES04_APD01', 1, 'AREA07_PROSES04', 'Sarung tangan PU', 'Visual', 256, TRUE),
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA07_PROSES04_APD02', 2, 'AREA07_PROSES04', 'Sarung tangan PU', 'Visual', 257, TRUE),
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA07_PROSES04_APD03', 3, 'AREA07_PROSES04', 'Sarung tangan PU', 'Visual', 258, TRUE),
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA07_PROSES04_APD04', 4, 'AREA07_PROSES04', 'Sarung tangan PU', 'Visual', 259, TRUE),
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA07_PROSES04_APD05', 5, 'AREA07_PROSES04', 'Sarung tangan PU', 'Visual', 260, TRUE),
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA07_PROSES04_APD06', 6, 'AREA07_PROSES04', 'Sarung tangan PU', 'Visual', 261, TRUE),
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA07_PROSES04_APD07', 7, 'AREA07_PROSES04', 'Sarung tangan PU', 'Visual', 262, TRUE),
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA07_PROSES04_APD08', 8, 'AREA07_PROSES04', 'Sarung tangan PU', 'Visual', 263, TRUE),
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA07_PROSES04_APD09', 9, 'AREA07_PROSES04', 'Sarung tangan PU', 'Visual', 264, TRUE),
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA07_PROSES04_APD10', 10, 'AREA07_PROSES04', 'Sarung tangan PU', 'Visual', 265, TRUE);
+
+-- AREA WAREHOUSE
+INSERT INTO ga_checksheet_items (type_id, item_key, no, item_group, item_check, method, sort_order, is_active) VALUES
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA08_PROSES01', 1, 'PROSES', 'Driver + Charger Battery Forklift', 'Visual', 266, TRUE);
+INSERT INTO ga_checksheet_items (type_id, item_key, no, item_group, item_check, method, sort_order, is_active) VALUES
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA08_PROSES01_APD01', 1, 'AREA08_PROSES01', 'Helm', 'Visual', 267, TRUE),
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA08_PROSES01_APD02', 2, 'AREA08_PROSES01', 'Sepatu Safety', 'Visual', 268, TRUE),
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA08_PROSES01_APD03', 3, 'AREA08_PROSES01', 'Back support', 'Visual', 269, TRUE),
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA08_PROSES01_APD04', 4, 'AREA08_PROSES01', 'Safety Vest', 'Visual', 270, TRUE),
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA08_PROSES01_APD05', 5, 'AREA08_PROSES01', 'Masker FKA', 'Visual', 271, TRUE),
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA08_PROSES01_APD06', 6, 'AREA08_PROSES01', 'Sarung Tangan Green Nitril', 'Visual', 272, TRUE);
+
+INSERT INTO ga_checksheet_items (type_id, item_key, no, item_group, item_check, method, sort_order, is_active) VALUES
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA08_PROSES02', 2, 'PROSES', 'Receiving Storage', 'Visual', 273, TRUE);
+INSERT INTO ga_checksheet_items (type_id, item_key, no, item_group, item_check, method, sort_order, is_active) VALUES
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA08_PROSES02_APD01', 1, 'AREA08_PROSES02', 'Helm', 'Visual', 274, TRUE),
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA08_PROSES02_APD02', 2, 'AREA08_PROSES02', 'Sepatu Safety', 'Visual', 275, TRUE),
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA08_PROSES02_APD03', 3, 'AREA08_PROSES02', 'Back support', 'Visual', 276, TRUE),
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA08_PROSES02_APD04', 4, 'AREA08_PROSES02', 'Safety Vest', 'Visual', 277, TRUE),
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA08_PROSES02_APD05', 5, 'AREA08_PROSES02', 'Masker FKA', 'Visual', 278, TRUE);
+
+INSERT INTO ga_checksheet_items (type_id, item_key, no, item_group, item_check, method, sort_order, is_active) VALUES
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA08_PROSES03', 3, 'PROSES', 'Chorobiki Pre Assy', 'Visual', 279, TRUE);
+INSERT INTO ga_checksheet_items (type_id, item_key, no, item_group, item_check, method, sort_order, is_active) VALUES
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA08_PROSES03_APD01', 1, 'AREA08_PROSES03', 'Helm', 'Visual', 280, TRUE),
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA08_PROSES03_APD02', 2, 'AREA08_PROSES03', 'Sepatu Safety', 'Visual', 281, TRUE),
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA08_PROSES03_APD03', 3, 'AREA08_PROSES03', 'Back support', 'Visual', 282, TRUE),
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA08_PROSES03_APD04', 4, 'AREA08_PROSES03', 'Sarung tangan PU', 'Visual', 283, TRUE),
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA08_PROSES03_APD05', 5, 'AREA08_PROSES03', 'Safety Vest', 'Visual', 284, TRUE),
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA08_PROSES03_APD06', 6, 'AREA08_PROSES03', 'Helm', 'Visual', 285, TRUE),
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA08_PROSES03_APD07', 7, 'AREA08_PROSES03', 'Sepatu Safety', 'Visual', 286, TRUE),
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA08_PROSES03_APD08', 8, 'AREA08_PROSES03', 'Back support', 'Visual', 287, TRUE),
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA08_PROSES03_APD09', 9, 'AREA08_PROSES03', 'Sarung tangan Showa BO500', 'Visual', 288, TRUE),
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA08_PROSES03_APD10', 10, 'AREA08_PROSES03', 'Safety Vest', 'Visual', 289, TRUE);
+
+INSERT INTO ga_checksheet_items (type_id, item_key, no, item_group, item_check, method, sort_order, is_active) VALUES
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA08_PROSES04', 4, 'PROSES', 'Ministore Final Assy / Protector', 'Visual', 290, TRUE);
+INSERT INTO ga_checksheet_items (type_id, item_key, no, item_group, item_check, method, sort_order, is_active) VALUES
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA08_PROSES04_APD01', 1, 'AREA08_PROSES04', 'Helm', 'Visual', 291, TRUE),
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA08_PROSES04_APD02', 2, 'AREA08_PROSES04', 'Sepatu Safety', 'Visual', 292, TRUE),
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA08_PROSES04_APD03', 3, 'AREA08_PROSES04', 'Safety Vest', 'Visual', 293, TRUE);
+
+INSERT INTO ga_checksheet_items (type_id, item_key, no, item_group, item_check, method, sort_order, is_active) VALUES
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA08_PROSES05', 5, 'PROSES', 'Supply Final Assy/ Protector', 'Visual', 294, TRUE);
+INSERT INTO ga_checksheet_items (type_id, item_key, no, item_group, item_check, method, sort_order, is_active) VALUES
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA08_PROSES05_APD01', 1, 'AREA08_PROSES05', 'Safety Vest', 'Visual', 295, TRUE);
+
+-- AREA EXIM
+INSERT INTO ga_checksheet_items (type_id, item_key, no, item_group, item_check, method, sort_order, is_active) VALUES
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA09_PROSES01', 1, 'PROSES', 'Driver Forklift/SCANN OUT', 'Visual', 296, TRUE);
+INSERT INTO ga_checksheet_items (type_id, item_key, no, item_group, item_check, method, sort_order, is_active) VALUES
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA09_PROSES01_APD01', 1, 'AREA09_PROSES01', 'Helm', 'Visual', 297, TRUE),
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA09_PROSES01_APD02', 2, 'AREA09_PROSES01', 'Sepatu Safety', 'Visual', 298, TRUE),
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA09_PROSES01_APD03', 3, 'AREA09_PROSES01', 'Back support', 'Visual', 299, TRUE),
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA09_PROSES01_APD04', 4, 'AREA09_PROSES01', 'Safety Vest', 'Visual', 300, TRUE),
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA09_PROSES01_APD05', 5, 'AREA09_PROSES01', 'Masker FKA', 'Visual', 301, TRUE);
+
+INSERT INTO ga_checksheet_items (type_id, item_key, no, item_group, item_check, method, sort_order, is_active) VALUES
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA09_PROSES02', 2, 'PROSES', 'PREPARE & SUPPLY KARTON BOX, PALLET/SCANN IN', 'Visual', 302, TRUE);
+INSERT INTO ga_checksheet_items (type_id, item_key, no, item_group, item_check, method, sort_order, is_active) VALUES
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA09_PROSES02_APD01', 1, 'AREA09_PROSES02', 'Helm', 'Visual', 303, TRUE),
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA09_PROSES02_APD02', 2, 'AREA09_PROSES02', 'Safety shoes', 'Visual', 304, TRUE),
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA09_PROSES02_APD03', 3, 'AREA09_PROSES02', 'Back support', 'Visual', 305, TRUE),
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA09_PROSES02_APD04', 4, 'AREA09_PROSES02', 'Masker FKA', 'Visual', 306, TRUE),
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA09_PROSES02_APD05', 5, 'AREA09_PROSES02', 'Safety Vest', 'Visual', 307, TRUE),
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA09_PROSES02_APD06', 6, 'AREA09_PROSES02', 'Sarung tangan PU', 'Visual', 308, TRUE),
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA09_PROSES02_APD07', 7, 'AREA09_PROSES02', 'Helm', 'Visual', 309, TRUE),
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA09_PROSES02_APD08', 8, 'AREA09_PROSES02', 'Safety shoes', 'Visual', 310, TRUE),
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA09_PROSES02_APD09', 9, 'AREA09_PROSES02', 'Back support', 'Visual', 311, TRUE),
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA09_PROSES02_APD10', 10, 'AREA09_PROSES02', 'Masker FKA', 'Visual', 312, TRUE),
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA09_PROSES02_APD11', 11, 'AREA09_PROSES02', 'Safety Vest', 'Visual', 313, TRUE),
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA09_PROSES02_APD12', 12, 'AREA09_PROSES02', 'Sarung tangan PU', 'Visual', 314, TRUE);
+
+INSERT INTO ga_checksheet_items (type_id, item_key, no, item_group, item_check, method, sort_order, is_active) VALUES
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA09_PROSES03', 3, 'PROSES', 'Prev. Applicator', 'Visual', 315, TRUE);
+INSERT INTO ga_checksheet_items (type_id, item_key, no, item_group, item_check, method, sort_order, is_active) VALUES
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA09_PROSES03_APD01', 1, 'AREA09_PROSES03', 'Masker FKA/3M', 'Visual', 316, TRUE),
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA09_PROSES03_APD02', 2, 'AREA09_PROSES03', 'Sarung tangan katun', 'Visual', 317, TRUE),
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA09_PROSES03_APD03', 3, 'AREA09_PROSES03', 'Sarung tangan hijau', 'Visual', 318, TRUE),
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA09_PROSES03_APD04', 4, 'AREA09_PROSES03', 'Sarung tangan PU', 'Visual', 319, TRUE),
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA09_PROSES03_APD05', 5, 'AREA09_PROSES03', 'Ear Muff/EAR PLUG', 'Visual', 320, TRUE),
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA09_PROSES03_APD06', 6, 'AREA09_PROSES03', 'Kacamata bening', 'Visual', 321, TRUE),
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA09_PROSES03_APD07', 7, 'AREA09_PROSES03', 'Safety shoes', 'Visual', 322, TRUE),
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA09_PROSES03_APD08', 8, 'AREA09_PROSES03', 'Masker FKA/3M', 'Visual', 323, TRUE),
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA09_PROSES03_APD09', 9, 'AREA09_PROSES03', 'Sarung tangan katun', 'Visual', 324, TRUE),
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA09_PROSES03_APD10', 10, 'AREA09_PROSES03', 'Sarung tangan hijau', 'Visual', 325, TRUE),
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA09_PROSES03_APD11', 11, 'AREA09_PROSES03', 'Sarung tangan PU', 'Visual', 326, TRUE),
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA09_PROSES03_APD12', 12, 'AREA09_PROSES03', 'Ear Muff/EAR PLUG', 'Visual', 327, TRUE),
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA09_PROSES03_APD13', 13, 'AREA09_PROSES03', 'Kacamata bening', 'Visual', 328, TRUE),
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA09_PROSES03_APD14', 14, 'AREA09_PROSES03', 'Safety shoes', 'Visual', 329, TRUE);
+
+INSERT INTO ga_checksheet_items (type_id, item_key, no, item_group, item_check, method, sort_order, is_active) VALUES
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA09_PROSES04', 4, 'PROSES', 'Back Up', 'Visual', 330, TRUE);
+INSERT INTO ga_checksheet_items (type_id, item_key, no, item_group, item_check, method, sort_order, is_active) VALUES
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA09_PROSES04_APD01', 1, 'AREA09_PROSES04', 'Masker FKA', 'Visual', 331, TRUE),
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA09_PROSES04_APD02', 2, 'AREA09_PROSES04', 'Safety shoes', 'Visual', 332, TRUE),
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA09_PROSES04_APD03', 3, 'AREA09_PROSES04', 'Celemek', 'Visual', 333, TRUE),
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA09_PROSES04_APD04', 4, 'AREA09_PROSES04', 'Masker FKA', 'Visual', 334, TRUE),
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA09_PROSES04_APD05', 5, 'AREA09_PROSES04', 'Safety shoes', 'Visual', 335, TRUE),
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA09_PROSES04_APD06', 6, 'AREA09_PROSES04', 'Celemek', 'Visual', 336, TRUE);
+
+-- AREA WORKSHOP
+INSERT INTO ga_checksheet_items (type_id, item_key, no, item_group, item_check, method, sort_order, is_active) VALUES
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA10_PROSES01', 1, 'PROSES', 'LAS, GERINDA, PAINTING, CUT OFF', 'Visual', 337, TRUE);
+INSERT INTO ga_checksheet_items (type_id, item_key, no, item_group, item_check, method, sort_order, is_active) VALUES
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA10_PROSES01_APD01', 1, 'AREA10_PROSES01', 'Masker FKA', 'Visual', 338, TRUE),
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA10_PROSES01_APD02', 2, 'AREA10_PROSES01', 'Masker respiratory', 'Visual', 339, TRUE),
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA10_PROSES01_APD03', 3, 'AREA10_PROSES01', 'Sarung tangan bintil', 'Visual', 340, TRUE),
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA10_PROSES01_APD04', 4, 'AREA10_PROSES01', 'Sarung tangan las', 'Visual', 341, TRUE),
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA10_PROSES01_APD05', 5, 'AREA10_PROSES01', 'Topeng/kacamata las', 'Visual', 342, TRUE),
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA10_PROSES01_APD06', 6, 'AREA10_PROSES01', 'Topeng/kacamata gerinda', 'Visual', 343, TRUE),
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA10_PROSES01_APD07', 7, 'AREA10_PROSES01', 'ear muff/ear plug', 'Visual', 344, TRUE),
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA10_PROSES01_APD08', 8, 'AREA10_PROSES01', 'Cattlepack', 'Visual', 345, TRUE),
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA10_PROSES01_APD09', 9, 'AREA10_PROSES01', 'Safety shoes', 'Visual', 346, TRUE);
+
+-- AREA UTILITY
+INSERT INTO ga_checksheet_items (type_id, item_key, no, item_group, item_check, method, sort_order, is_active) VALUES
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA11_PROSES01', 1, 'PROSES', 'PENGECEKAN ARUS LISTRIK (Area Utility)', 'Visual', 347, TRUE);
+INSERT INTO ga_checksheet_items (type_id, item_key, no, item_group, item_check, method, sort_order, is_active) VALUES
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA11_PROSES01_APD01', 1, 'AREA11_PROSES01', 'Kacamata bening', 'Visual', 348, TRUE),
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA11_PROSES01_APD02', 2, 'AREA11_PROSES01', 'Earmuff/earplug', 'Visual', 349, TRUE),
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA11_PROSES01_APD03', 3, 'AREA11_PROSES01', 'Masker FKA', 'Visual', 350, TRUE),
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA11_PROSES01_APD04', 4, 'AREA11_PROSES01', 'Sarung tangan listrik', 'Visual', 351, TRUE),
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA11_PROSES01_APD05', 5, 'AREA11_PROSES01', 'Safety shoes', 'Visual', 352, TRUE);
+
+INSERT INTO ga_checksheet_items (type_id, item_key, no, item_group, item_check, method, sort_order, is_active) VALUES
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA11_PROSES02', 2, 'PROSES', 'PENANGANAN TUMPAHAN OLI & SOLAR (Area Utility)', 'Visual', 353, TRUE);
+INSERT INTO ga_checksheet_items (type_id, item_key, no, item_group, item_check, method, sort_order, is_active) VALUES
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA11_PROSES02_APD01', 1, 'AREA11_PROSES02', 'Pasir', 'Visual', 354, TRUE),
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA11_PROSES02_APD02', 2, 'AREA11_PROSES02', 'Masker kain', 'Visual', 355, TRUE),
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA11_PROSES02_APD03', 3, 'AREA11_PROSES02', 'Sarung tangan bintil', 'Visual', 356, TRUE),
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA11_PROSES02_APD04', 4, 'AREA11_PROSES02', 'Celemek', 'Visual', 357, TRUE);
+
+-- AREA RECEIVING INSPECTION MATERIAL
+INSERT INTO ga_checksheet_items (type_id, item_key, no, item_group, item_check, method, sort_order, is_active) VALUES
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA12_PROSES01', 1, 'PROSES', 'PENGECEKAN MATERIAL', 'Visual', 358, TRUE);
+INSERT INTO ga_checksheet_items (type_id, item_key, no, item_group, item_check, method, sort_order, is_active) VALUES
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA12_PROSES01_APD01', 1, 'AREA12_PROSES01', 'Safety Helmet', 'Visual', 359, TRUE),
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA12_PROSES01_APD02', 2, 'AREA12_PROSES01', 'Safety Vest', 'Visual', 360, TRUE),
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA12_PROSES01_APD03', 3, 'AREA12_PROSES01', 'Back Support', 'Visual', 361, TRUE),
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA12_PROSES01_APD04', 4, 'AREA12_PROSES01', 'Safety shoes', 'Visual', 362, TRUE);
+
+-- AREA VOLTAGE TEST
+INSERT INTO ga_checksheet_items (type_id, item_key, no, item_group, item_check, method, sort_order, is_active) VALUES
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA13_PROSES01', 1, 'PROSES', 'PENGECEKAN ARUS LISTRIK', 'Visual', 363, TRUE);
+INSERT INTO ga_checksheet_items (type_id, item_key, no, item_group, item_check, method, sort_order, is_active) VALUES
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA13_PROSES01_APD01', 1, 'AREA13_PROSES01', 'Sarung tangan electric', 'Visual', 364, TRUE),
+((SELECT id FROM ga_checksheet_types WHERE slug = 'inspeksi-apd'), 'AREA13_PROSES01_APD02', 2, 'AREA13_PROSES01', 'Safety shoes', 'Visual', 365, TRUE);
