@@ -6,11 +6,42 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const slug = searchParams.get('slug');
 
+    // Jika tidak ada slug, kembalikan master data ringkasan per area atau seluruh area
     if (!slug) {
-      return NextResponse.json(
-        { success: false, message: 'Parameter slug diperlukan' },
-        { status: 400 }
-      );
+      const allQuery = `
+        WITH latest_records AS (
+          SELECT DISTINCT ON (r.area, i.no_apar)
+            r.area,
+            i.id as item_id,
+            i.no as no,
+            i.jenis_apar,
+            i.lokasi,
+            i.no_apar,
+            i.exp_date,
+            i.hydrotest_date,
+            r.submitted_at
+          FROM apar_items i
+          JOIN apar_records r ON i.record_id = r.id
+          ORDER BY r.area, i.no_apar, r.submitted_at DESC
+        )
+        SELECT 
+          area,
+          COUNT(item_id)::int as count
+        FROM latest_records
+        GROUP BY area
+      `;
+
+      const allResult = await pool.query(allQuery);
+      const areaCounts: Record<string, number> = {};
+      allResult.rows.forEach((row: any) => {
+        areaCounts[row.area] = parseInt(row.count) || 0;
+      });
+
+      return NextResponse.json({
+        success: true,
+        countsByArea: areaCounts,
+        totalApar: Object.values(areaCounts).reduce((a, b) => a + b, 0)
+      });
     }
 
     // Query untuk mendapatkan data master dari record terbaru untuk setiap APAR
