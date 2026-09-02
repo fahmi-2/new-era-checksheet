@@ -41,7 +41,7 @@ const ALL_CHECKSHEETS: Record<string, ChecksheetItem> = {
   "form-inspeksi-stop-kontak": { name: "FORM PENGECEKAN STOP KONTAK DAN INSTALASI LISTRIK", desc: "Cek stop kontak dan instalasi listrik di area kerja", link: "form-inspeksi-stop-kontak", key: "form-inspeksi-stop-kontak", icon: "🔌" },
   "e-checksheet-apd": { name: "Form pengambilan APD", desc: "Formulir distribusi & pengambilan APD", link: "e-checksheet-apd/riwayat-apd", key: "e-checksheet-apd", icon: "🦺" },
   "inf-jalan": { name: "INSPEKSI INFRASTUKTUR JALAN", desc: "Cek kondisi jalan, trotoar, boardess pabrik", link: "inf-jalan", key: "inf-jalan", icon: "🛣️" },
-  "inspeksi-apd": { name: "INSPEKSI APD", desc: "Inspeksi pengecekan penggunaan APD", link: "inspeksi-apd", key: "inspeksi-apd", icon: "🔍" },
+  "inspeksi-apd": { name: "INSPEKSI APD", desc: "Inspeksi pengecekan penggunaan APD", link: "e-checksheet-ins-apd", key: "inspeksi-apd", icon: "🔍" },
   "checksheet-toilet": { name: "Checksheet Toilet", desc: "Patroli harian kebersihan toilet (standar 5S)", link: "checksheet-toilet", key: "checksheet-toilet", icon: "🚽" },
 }
 
@@ -202,7 +202,7 @@ export default function StatusGA() {
                   {cat.items.map((item, itemIdx) => (
                     <Link
                       key={`${catIndex}-${itemIdx}-${item.key}`}
-                      href={`/status-ga/${item.link}`}
+                      href={item.key === "inspeksi-apd" ? "/e-checksheet-ins-apd" : `/status-ga/${item.link}`}
                       className="ga-check-card"
                     >
                       <div className="ga-card-icon">{item.icon}</div>

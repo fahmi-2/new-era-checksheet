@@ -5,11 +5,11 @@ import { useEffect, useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth, isAuthorizedForChecksheet } from "@/lib/auth-context";
 import { Sidebar } from "@/components/Sidebar";
-import { AlertTriangle, FileText, BarChart2, ArrowLeft, ShieldCheck, MapPin, Layers } from "lucide-react";
-import { aparDataBySlug } from "@/lib/apar-data";
+import { AlertTriangle, FileText, BarChart2, ArrowLeft, ShieldCheck, MapPin, Layers, Plus, Edit2, Trash2 } from "lucide-react";
+import { aparDataBySlug, type AparDataItem } from "@/lib/apar-data";
 
-// Mapping area names (sama seperti di [slug]/page.tsx)
-const areaNames: Record<string, string> = {
+// Fallback Mapping area names
+const DEFAULT_AREA_NAMES: Record<string, string> = {
   "area-locker-security": "AREA LOCKER & SECURITY",
   "area-kantin": "AREA KANTIN",
   "area-auditorium": "AREA AUDITORIUM",
@@ -49,7 +49,16 @@ export default function InspeksiAparPage() {
   const today = new Date().toISOString().split("T")[0];
   const [searchTerm, setSearchTerm] = useState("");
   const [redirected, setRedirected] = useState(false);
+  const [areaNames, setAreaNames] = useState<Record<string, string>>(DEFAULT_AREA_NAMES);
   const [dbAreaCounts, setDbAreaCounts] = useState<Record<string, number>>({});
+
+  // Admin Area Management Modal State
+  const [showAreaModal, setShowAreaModal] = useState(false);
+  const [editingAreaSlug, setEditingAreaSlug] = useState<string | null>(null);
+  const [areaForm, setAreaForm] = useState({ slug: "", name: "" });
+  const [isSaving, setIsSaving] = useState(false);
+
+  const isAdmin = !!(user && ["admin", "superadmin"].includes(user.role));
 
   // Validasi akses
   useEffect(() => {
@@ -60,27 +69,33 @@ export default function InspeksiAparPage() {
     }
   }, [user, redirected, router]);
 
-  // Fetch count master APAR dari database
-  useEffect(() => {
-    const fetchMasterCounts = async () => {
-      try {
-        const res = await fetch("/api/apar/master");
-        if (res.ok) {
-          const result = await res.json();
-          if (result.success && result.countsByArea) {
+  // Fetch count master APAR & daftar area dari database
+  const fetchMasterConfig = async () => {
+    try {
+      const res = await fetch(`/api/apar/master?_t=${Date.now()}`);
+      if (res.ok) {
+        const result = await res.json();
+        if (result.success) {
+          if (result.areas && Object.keys(result.areas).length > 0) {
+            setAreaNames(result.areas);
+          }
+          if (result.countsByArea) {
             setDbAreaCounts(result.countsByArea);
           }
         }
-      } catch (err) {
-        console.error("Gagal mengambil master counts APAR:", err);
       }
-    };
-    fetchMasterCounts();
+    } catch (err) {
+      console.error("Gagal mengambil master counts APAR:", err);
+    }
+  };
+
+  useEffect(() => {
+    fetchMasterConfig();
   }, []);
 
-  // Helper untuk mendapatkan jumlah APAR per zona (prioritas DB master, fallback ke master static data)
+  // Helper untuk mendapatkan jumlah APAR per zona
   const getZoneAparCount = (slug: string) => {
-    if (dbAreaCounts[slug] !== undefined && dbAreaCounts[slug] > 0) {
+    if (dbAreaCounts[slug] !== undefined) {
       return dbAreaCounts[slug];
     }
     return aparDataBySlug[slug]?.length || 0;
@@ -91,21 +106,108 @@ export default function InspeksiAparPage() {
     return Object.keys(areaNames).reduce((acc, slug) => {
       return acc + getZoneAparCount(slug);
     }, 0);
-  }, [dbAreaCounts]);
+  }, [areaNames, dbAreaCounts]);
 
   const totalZonesCount = Object.keys(areaNames).length;
 
-  // ✅ Helper: Cek apakah area sudah diisi hari ini (opsional, untuk visual)
   const checkIfFilled = (slug: string) => {
     if (typeof window === "undefined") return false;
     const key = `ga_apar_${slug}_${today}`;
     return localStorage.getItem(key) !== null;
   };
 
-  // ✅ Helper: Handle klik "Isi Checklist" - LANGSUNG KE FORM (tanpa cek scan di sini)
-  // Validasi scan dilakukan di halaman form [slug]/page.tsx
   const handleChecklistClick = (slug: string) => {
     router.push(`/status-ga/inspeksi-apar/${slug}?date=${today}`);
+  };
+
+  // Admin Area Actions
+  const handleOpenAddArea = () => {
+    setEditingAreaSlug(null);
+    setAreaForm({ slug: "", name: "" });
+    setShowAreaModal(true);
+  };
+
+  const handleOpenEditArea = (slug: string, name: string) => {
+    setEditingAreaSlug(slug);
+    setAreaForm({ slug, name });
+    setShowAreaModal(true);
+  };
+
+  const handleDeleteArea = async (slug: string) => {
+    const areaTitle = areaNames[slug] || slug;
+    if (!confirm(`Apakah Anda yakin ingin menghapus zona APAR "${areaTitle}"?`)) return;
+
+    try {
+      const newAreas = { ...areaNames };
+      delete newAreas[slug];
+
+      const res = await fetch("/api/apar/master", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          areas: newAreas,
+          updated_by: user?.fullName || "admin"
+        })
+      });
+
+      const json = await res.json();
+      if (!res.ok || !json.success) throw new Error(json.message || "Gagal menghapus zona");
+
+      setAreaNames(newAreas);
+      alert(`✅ Zona APAR "${areaTitle}" berhasil dihapus!`);
+    } catch (err: any) {
+      alert(`❌ Error: ${err.message}`);
+    }
+  };
+
+  const handleSaveAreaModal = async () => {
+    if (!areaForm.name.trim()) {
+      alert("Nama area/zona wajib diisi!");
+      return;
+    }
+
+    try {
+      setIsSaving(true);
+      const newAreas = { ...areaNames };
+
+      if (editingAreaSlug) {
+        // Edit nama
+        newAreas[editingAreaSlug] = areaForm.name.trim().toUpperCase();
+      } else {
+        // Tambah baru
+        const generatedSlug = areaForm.slug.trim()
+          ? areaForm.slug.trim().toLowerCase().replace(/\s+/g, '-')
+          : `area-${areaForm.name.trim().toLowerCase().replace(/[^a-z0-9]/g, '-')}`;
+
+        if (newAreas[generatedSlug]) {
+          alert("ID atau Nama zona sudah ada, gunakan nama yang lain!");
+          setIsSaving(false);
+          return;
+        }
+
+        newAreas[generatedSlug] = areaForm.name.trim().toUpperCase();
+      }
+
+      const res = await fetch("/api/apar/master", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          areas: newAreas,
+          updated_by: user?.fullName || "admin"
+        })
+      });
+
+      const json = await res.json();
+      if (!res.ok || !json.success) throw new Error(json.message || "Gagal menyimpan area");
+
+      setAreaNames(newAreas);
+      setShowAreaModal(false);
+      alert(`✅ Zona APAR berhasil ${editingAreaSlug ? 'diperbarui' : 'ditambahkan'}!`);
+    } catch (err: any) {
+      alert(`❌ Error: ${err.message}`);
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   if (!user) return null;
@@ -144,6 +246,47 @@ export default function InspeksiAparPage() {
           </div>
           <div className="header-subtitle">Daily check alat pemadam api ringan</div>
         </div>
+
+        {/* 👑 Admin Actions Toolbar */}
+        {isAdmin && (
+          <div style={{
+            background: "linear-gradient(135deg, #1e3a8a 0%, #1e40af 100%)",
+            borderRadius: "12px",
+            padding: "14px 20px",
+            marginBottom: "20px",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            flexWrap: "wrap",
+            gap: "12px",
+            color: "white"
+          }}>
+            <div>
+              <div style={{ fontWeight: "700", fontSize: "14px" }}>👑 Kelola Master Zona APAR (Admin)</div>
+              <div style={{ fontSize: "12px", color: "#bfdbfe" }}>
+                Admin dapat menambah area/zona APAR baru, mengubah nama zona, atau menghapus zona.
+              </div>
+            </div>
+            <button
+              onClick={handleOpenAddArea}
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: "6px",
+                padding: "8px 16px",
+                background: "#16a34a",
+                color: "white",
+                border: "none",
+                borderRadius: "8px",
+                fontWeight: "600",
+                fontSize: "13px",
+                cursor: "pointer"
+              }}
+            >
+              <Plus size={16} /> Tambah Zona APAR
+            </button>
+          </div>
+        )}
 
         {/* Info Cards - Ringkasan Total APAR Master Data & Zona */}
         <div className="stats-cards-container">
@@ -225,8 +368,51 @@ export default function InspeksiAparPage() {
                   </div>
                   <p className="card-desc">{area.desc}</p>
 
+                  {isAdmin && (
+                    <div style={{
+                      display: "flex",
+                      justifyContent: "flex-end",
+                      gap: "6px",
+                      padding: "0 20px 8px 20px"
+                    }}>
+                      <button
+                        onClick={() => handleOpenEditArea(area.id, area.title)}
+                        style={{
+                          background: "#f1f5f9",
+                          border: "1px solid #cbd5e1",
+                          borderRadius: "4px",
+                          padding: "4px 8px",
+                          fontSize: "11px",
+                          color: "#334155",
+                          cursor: "pointer",
+                          display: "flex",
+                          alignItems: "center",
+                          gap: "4px"
+                        }}
+                      >
+                        <Edit2 size={12} /> Edit Zona
+                      </button>
+                      <button
+                        onClick={() => handleDeleteArea(area.id)}
+                        style={{
+                          background: "#fee2e2",
+                          border: "1px solid #fca5a5",
+                          borderRadius: "4px",
+                          padding: "4px 8px",
+                          fontSize: "11px",
+                          color: "#dc2626",
+                          cursor: "pointer",
+                          display: "flex",
+                          alignItems: "center",
+                          gap: "4px"
+                        }}
+                      >
+                        <Trash2 size={12} /> Hapus
+                      </button>
+                    </div>
+                  )}
+
                   <div className="card-actions">
-                    {/* ✅ TOMBOL ISI CHECKLIST */}
                     <button
                       onClick={() => handleChecklistClick(area.id)}
                       className={`btn-checklist ${isFilled ? "btn-filled" : ""}`}
@@ -235,7 +421,6 @@ export default function InspeksiAparPage() {
                       {isFilled ? "Sudah Diisi" : "Isi Checklist"}
                     </button>
 
-                    {/* ✅ TOMBOL RIWAYAT */}
                     <button
                       onClick={() => router.push(`/status-ga/inspeksi-apar/${area.id}/riwayat`)}
                       className="btn-riwayat"
@@ -250,12 +435,121 @@ export default function InspeksiAparPage() {
           </div>
         )}
 
+        {/* Modal Add/Edit Area */}
+        {showAreaModal && (
+          <div style={{
+            position: "fixed",
+            top: 0, left: 0, right: 0, bottom: 0,
+            background: "rgba(15, 23, 42, 0.6)",
+            display: "flex",
+            justifyContent: "center",
+            alignItems: "center",
+            zIndex: 3000,
+            padding: "20px",
+            backdropFilter: "blur(4px)"
+          }}>
+            <div style={{
+              background: "white",
+              borderRadius: "14px",
+              width: "100%",
+              maxWidth: "500px",
+              boxShadow: "0 20px 40px rgba(0,0,0,0.25)",
+              overflow: "hidden"
+            }}>
+              <div style={{
+                padding: "16px 20px",
+                background: "linear-gradient(135deg, #1e3a8a 0%, #2563eb 100%)",
+                color: "white",
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center"
+              }}>
+                <h3 style={{ margin: 0, fontSize: "16px", fontWeight: "700" }}>
+                  {editingAreaSlug ? "Edit Nama Zona APAR" : "Tambah Zona APAR Baru"}
+                </h3>
+                <button
+                  type="button"
+                  onClick={() => setShowAreaModal(false)}
+                  style={{ background: "none", border: "none", color: "white", fontSize: "20px", cursor: "pointer" }}
+                >
+                  ✕
+                </button>
+              </div>
+
+              <div style={{ padding: "20px", display: "flex", flexDirection: "column", gap: "14px" }}>
+                <div>
+                  <label style={{ display: "block", fontSize: "13px", fontWeight: "600", color: "#334155", marginBottom: "6px" }}>
+                    Nama Zona APAR
+                  </label>
+                  <input
+                    type="text"
+                    value={areaForm.name}
+                    onChange={(e) => setAreaForm({ ...areaForm, name: e.target.value })}
+                    placeholder="Contoh: AREA GUDANG KIMIA"
+                    style={{
+                      width: "100%",
+                      padding: "9px 12px",
+                      border: "1px solid #cbd5e1",
+                      borderRadius: "6px",
+                      fontSize: "14px",
+                      boxSizing: "border-box"
+                    }}
+                  />
+                </div>
+              </div>
+
+              <div style={{
+                padding: "14px 20px",
+                background: "#f1f5f9",
+                borderTop: "1px solid #e2e8f0",
+                display: "flex",
+                justifyContent: "flex-end",
+                gap: "10px"
+              }}>
+                <button
+                  type="button"
+                  onClick={() => setShowAreaModal(false)}
+                  style={{
+                    padding: "8px 16px",
+                    background: "#94a3b8",
+                    color: "white",
+                    border: "none",
+                    borderRadius: "6px",
+                    fontSize: "13px",
+                    fontWeight: "600",
+                    cursor: "pointer"
+                  }}
+                >
+                  Batal
+                </button>
+                <button
+                  type="button"
+                  onClick={handleSaveAreaModal}
+                  disabled={isSaving}
+                  style={{
+                    padding: "8px 18px",
+                    background: isSaving ? "#93c5fd" : "#2563eb",
+                    color: "white",
+                    border: "none",
+                    borderRadius: "6px",
+                    fontSize: "13px",
+                    fontWeight: "600",
+                    cursor: isSaving ? "not-allowed" : "pointer"
+                  }}
+                >
+                  {isSaving ? "Menyimpan..." : "💾 Simpan Zona"}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Info Box - Petunjuk Penggunaan */}
         <div className="info-box" style={{ marginTop: '24px' }}>
           <h3>💡 Cara Penggunaan:</h3>
           <ul>
             <li>Klik <strong>"Isi Checklist"</strong> untuk membuka form inspeksi</li>
-            <li>Form akan terbuka namun <strong>tidak dapat diisi</strong> sebelum scan QR code area</li>
+            <li>Form akan terbuka namun <strong>tidak dapat diisi</strong> sebelum scan QR code area (kecuali Administrator)</li>
             <li>Klik tombol <strong>"🔍 Scan Sekarang"</strong> di banner kuning untuk mulai scan</li>
             <li>Setelah scan berhasil, form akan <strong>otomatis aktif</strong> dan siap diisi</li>
             <li>Untuk melihat data historis, klik tombol <strong>"Riwayat"</strong></li>
