@@ -119,6 +119,7 @@
   * {
     @apply border-border outline-ring/50;
   }
+
   body {
     @apply bg-background text-foreground;
   }
@@ -558,14 +559,16 @@
 
 /* Mobile (≤ 480px) - Drawer Mode */
 @media (max-width: 480px) {
+
   /* Add padding to navbar/header to make room for hamburger button */
   main {
     padding-top: 0;
   }
 
-  main > div:first-child {
+  main>div:first-child {
     padding-top: 30px;
   }
+
   /* Hamburger button - positioned so it doesn't cover navbar */
   .hamburger-button {
     display: flex;
@@ -849,6 +852,7 @@ body {
 
 /* RESPONSIVE NAVBAR */
 @media (max-width: 1024px) {
+
   .navbar-static,
   .nav-bar-static {
     padding: 10px 16px;
@@ -877,6 +881,7 @@ body {
 }
 
 @media (max-width: 768px) {
+
   .navbar-static,
   .nav-bar-static {
     padding: 8px 12px;
@@ -931,6 +936,7 @@ body {
 }
 
 @media (max-width: 480px) {
+
   .navbar-static,
   .nav-bar-static {
     padding: 8px 10px;
@@ -1115,7 +1121,7 @@ body {
   width: 100%;
   gap: 60px;
   align-items: center;
-  justify-content: space-between; 
+  justify-content: space-between;
 }
 
 .login-text-section {
@@ -1247,7 +1253,8 @@ body {
 
   .input-field input,
   .input-field select {
-    font-size: 16px; /* Prevent zoom on input */
+    font-size: 16px;
+    /* Prevent zoom on input */
   }
 
   .auth-btn {
@@ -1888,6 +1895,7 @@ select:disabled {
 
 /* RESPONSIVE HISTORY TABLE */
 @media (max-width: 768px) {
+
   .history-table th,
   .history-table td {
     padding: 12px 12px;
@@ -2003,7 +2011,8 @@ select:disabled {
 
   .sidebar-form input,
   .sidebar-form select {
-    font-size: 16px; /* Prevent zoom on mobile */
+    font-size: 16px;
+    /* Prevent zoom on mobile */
     padding: 10px 10px;
     margin-bottom: 14px;
   }
@@ -2079,7 +2088,8 @@ td input[type="text"] {
   border: 1px solid #ddd;
   border-radius: 6px;
   color: #333;
-  font-size: 16px; /* Prevent zoom */
+  font-size: 16px;
+  /* Prevent zoom */
 }
 
 .radio-group {
@@ -2178,7 +2188,8 @@ td input[type="text"] {
   min-height: 100px;
   color: #333;
   transition: border-color 0.3s;
-  font-size: 16px; /* Prevent zoom on mobile */
+  font-size: 16px;
+  /* Prevent zoom on mobile */
 }
 
 .notes textarea:focus {
@@ -2297,7 +2308,8 @@ td input[type="text"] {
 
 .table-wrapper {
   overflow-x: auto;
-  -webkit-overflow-scrolling: touch; /* Smooth scrolling on iOS */
+  -webkit-overflow-scrolling: touch;
+  /* Smooth scrolling on iOS */
 }
 
 .col-method {
@@ -3106,14 +3118,16 @@ div.text-header {
 
 .ga-main {
   flex: 1;
-  margin-left: var(--sidebar-w, 280px); /* Responsive to sidebar width */
+  margin-left: var(--sidebar-w, 280px);
+  /* Responsive to sidebar width */
   padding: 2rem;
   transition: margin-left 0.3s ease;
-  min-width: 0; /* Prevent flex overflow */
+  min-width: 0;
+  /* Prevent flex overflow */
 }
 
 /* When sidebar is collapsed */
-.sidebar-collapsed ~ .ga-main,
+.sidebar-collapsed~.ga-main,
 .ga-app-shell.sidebar-collapsed .ga-main {
   margin-left: var(--sidebar-w, 80px);
 }
@@ -3408,18 +3422,18 @@ div.text-header {
     margin-left: var(--sidebar-w, 80px);
     padding: 1.5rem;
   }
-  
+
   .ga-hero {
     flex-direction: column;
     gap: 1.5rem;
   }
-  
+
   .ga-hero-meta {
     align-items: flex-start;
     flex-direction: row;
     gap: 1rem;
   }
-  
+
   .ga-card-grid {
     grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
   }
@@ -3430,14 +3444,14 @@ div.text-header {
   .ga-app-shell {
     flex-direction: column;
   }
-  
+
   .ga-main {
     margin-left: 0;
     padding: 1rem;
     padding-top: 4.5rem;
     width: 100%;
   }
-  
+
   .sidebar {
     position: fixed;
     left: -280px;
@@ -3446,46 +3460,46 @@ div.text-header {
     z-index: 1000;
     transition: left 0.3s ease;
   }
-  
+
   .sidebar.open {
     left: 0;
   }
-  
+
   .ga-hero {
     padding: 1.5rem;
   }
-  
+
   .ga-hero h1 {
     font-size: 1.5rem;
   }
-  
+
   .ga-toolbar {
     flex-direction: column;
     align-items: stretch;
   }
-  
+
   .ga-search {
     max-width: none;
     min-width: 0;
   }
-  
+
   .ga-result-count {
     text-align: center;
   }
-  
+
   .ga-card-grid {
     grid-template-columns: 1fr;
     gap: 0.75rem;
   }
-  
+
   .ga-check-card {
     padding: 1rem;
   }
-  
+
   .ga-group {
     padding: 1rem;
   }
-  
+
   .ga-group-heading {
     flex-direction: column;
     align-items: flex-start;
@@ -3499,28 +3513,28 @@ div.text-header {
     padding: 0.75rem;
     padding-top: 4.5rem;
   }
-  
+
   .ga-hero {
     padding: 1rem;
   }
-  
+
   .ga-hero h1 {
     font-size: 1.25rem;
   }
-  
+
   .ga-subtitle {
     font-size: 0.85rem;
   }
-  
+
   .ga-card-icon {
     width: 2.5rem;
     height: 2.5rem;
   }
-  
+
   .ga-card-copy h3 {
     font-size: 0.875rem;
   }
-  
+
   .ga-card-copy p {
     font-size: 0.75rem;
   }
@@ -3531,7 +3545,7 @@ div.text-header {
   .ga-hero {
     padding: 1rem;
   }
-  
+
   .ga-hero h1 {
     font-size: 1.25rem;
   }
@@ -3542,9 +3556,154 @@ div.text-header {
   .ga-main {
     margin-left: 0;
   }
-  
+
   .sidebar,
   .sidebar-container {
     display: none;
   }
 }
+
+/* ========== SHOW PASSWORD MODAL ========== */
+
+@keyframes modal-fade-in {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes modal-pop-in {
+  0% {
+    opacity: 0;
+    transform: scale(0.9) translateY(14px);
+  }
+
+  100% {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+@keyframes modal-reveal {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes modal-shake {
+
+  10%,
+  90% {
+    transform: translateX(-1px);
+  }
+
+  20%,
+  80% {
+    transform: translateX(2px);
+  }
+
+  30%,
+  50%,
+  70% {
+    transform: translateX(-3px);
+  }
+
+  40%,
+  60% {
+    transform: translateX(3px);
+  }
+}
+
+.animate-modal-fade-in {
+  animation: modal-fade-in 0.18s ease-out;
+}
+
+.animate-modal-pop-in {
+  animation: modal-pop-in 0.28s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.animate-modal-reveal {
+  animation: modal-reveal 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.animate-modal-shake {
+  animation: modal-shake 0.4s cubic-bezier(0.36, 0.07, 0.19, 0.97);
+}
+
+@media (prefers-reduced-motion: reduce) {
+
+  .animate-modal-fade-in,
+  .animate-modal-pop-in,
+  .animate-modal-reveal,
+  .animate-modal-shake {
+    animation: none;
+  }
+}
+
+/* ========== SHOW PASSWORD MODAL - SCOPED STYLES ========== */
+/* Override global CSS conflicts & make modal beautifully rounded and modern */
+
+/* Pastikan modal container memiliki sudut melengkung sempurna (24px) */
+.fixed.inset-0.z-50 .rounded-3xl,
+.fixed.inset-0.z-50 .rounded-\[28px\],
+.fixed.inset-0.z-50 [class*="rounded-3xl"] {
+  border-radius: 1.5rem !important;
+  overflow: hidden !important;
+}
+
+/* User Profile Card */
+.fixed.inset-0.z-50 .rounded-2xl {
+  border-radius: 1rem !important;
+}
+
+/* Header icon container */
+.fixed.inset-0.z-50 .rounded-2xl.bg-white\/15,
+.fixed.inset-0.z-50 .rounded-2xl.bg-white\/20 {
+  border-radius: 1rem !important;
+}
+
+/* Fix input field - modern rounded input dengan border lembut */
+.fixed.inset-0.z-50 input[type="password"],
+.fixed.inset-0.z-50 input[type="text"] {
+  width: 100% !important;
+  display: block !important;
+  border: 1.5px solid #e2e8f0 !important;
+  border-radius: 0.875rem !important;
+  padding: 0.75rem 2.75rem 0.75rem 2.6rem !important;
+  background: #f8fafc !important;
+  font-size: 0.875rem !important;
+  line-height: 1.25rem !important;
+  box-sizing: border-box !important;
+  transition: all 0.2s ease-in-out !important;
+}
+
+.fixed.inset-0.z-50 input[type="password"]:focus,
+.fixed.inset-0.z-50 input[type="text"]:focus {
+  border-color: #6366f1 !important;
+  background: #ffffff !important;
+  outline: none !important;
+  box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.15) !important;
+}
+
+/* Card hasil dekripsi / copy button */
+.fixed.inset-0.z-50 .rounded-full {
+  border-radius: 9999px !important;
+}
+
+/* Shadow & lighting */
+.fixed.inset-0.z-50 .shadow-2xl {
+  box-shadow: 0 20px 45px -10px rgba(15, 23, 42, 0.25), 0 0 0 1px rgba(255, 255, 255, 0.1) !important;
+}
+
+.fixed.inset-0.z-50 .shadow-lg {
+  box-shadow: 0 8px 20px -4px rgba(99, 102, 241, 0.12), 0 2px 6px -1px rgba(0, 0, 0, 0.05) !important;
+}

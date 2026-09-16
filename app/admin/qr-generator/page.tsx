@@ -150,27 +150,16 @@ const LIFT_BARANG_UNITS = [
   { no: 6, namaLift: "Lift Barang Warehouse", area: "Warehouse Lt. 2", lokasi: "Area Warehouse" },
 ];
 
-const PANEL_NAMES = [
-  { no: 1, namaPanel: "MCC Sump 1", area: "Pintu 3 Genba A" },
-  { no: 2, namaPanel: "MCC Sump 2", area: "Pintu 1 Genba A" },
-  { no: 3, namaPanel: "MCC Sump 3", area: "Samping Meeting Room" },
-  { no: 4, namaPanel: "MCC Sump 4", area: "Toilet Security" },
-  { no: 5, namaPanel: "MCC Sump 5", area: "Toilet Wanita D" },
-  { no: 6, namaPanel: "MCC Sump 6", area: "Pintu 9" },
-  { no: 7, namaPanel: "MCC Sump 7", area: "Parkir Mobil" },
-  { no: 8, namaPanel: "MCC Sump Main Office", area: "Polytainer Exim" },
-  { no: 9, namaPanel: "sump new (auditorium)", area: "Submersible Pump Control Panel" },
-  { no: 10, namaPanel: "LP OLP - 1", area: "Loading Dock Warehouse" },
-  { no: 11, namaPanel: "LP OLP - 2", area: "Samping Masjid" },
-  { no: 12, namaPanel: "LP Training", area: "Training Room" },
-  { no: 13, namaPanel: "LP Kantin", area: "Kantin Room" },
-  { no: 14, namaPanel: "PP Dep Well", area: "TPA" },
-  { no: 15, namaPanel: "STP", area: "IPAL" },
-  { no: 16, namaPanel: "PP Computer", area: "Main Office" },
-  { no: 17, namaPanel: "PP/LP Office", area: "Main Office" },
-  { no: 18, namaPanel: "LP GH", area: "Pos Security" },
-  { no: 19, namaPanel: "Workshop", area: "Workshop" },
-  { no: 20, namaPanel: "Segitiga", area: "Area Segitiga" },
+// Area Panel — sesuai AREAS config di EChecksheetPanelForm.tsx
+const PANEL_AREAS = [
+  { key: "GENBA-A",    label: "Genba A (SUM)",            group: "A", months: "Jan, Apr, Jul, Okt" },
+  { key: "EXIM",      label: "Genba EXIM",               group: "A", months: "Jan, Apr, Jul, Okt" },
+  { key: "GD-B",      label: "Gedung B",                 group: "B", months: "Feb, Mei, Agu, Nov" },
+  { key: "PH-B",      label: "Power House B",            group: "B", months: "Feb, Mei, Agu, Nov" },
+  { key: "FAN-A",     label: "Fan A / PAC Gedung A",     group: "B", months: "Feb, Mei, Agu, Nov" },
+  { key: "GD-C",      label: "Gedung C",                 group: "C", months: "Mar, Jun, Sep, Des" },
+  { key: "PH-C",      label: "Power House C",            group: "C", months: "Mar, Jun, Sep, Des" },
+  { key: "AREA-OTHER", label: "Area Lain (SUMP/OLP/dll)", group: "B", months: "Feb, Mei, Agu, Nov" },
 ];
 
 const SMOKE_DETECTOR_AREAS = ["area-1", "area-2", "area-3", "area-4", "area-5"];
@@ -390,7 +379,12 @@ function generateExitLampQR(): QRConfig[] {
   return EXIT_LAMP_CATEGORIES.map(cat => ({ type: "Exit Lamp", title: `Exit Lamp - ${cat.replace(/-/g, " ")}`, url: `echecksheet:///status-ga/exit-lamp-pintu-darurat/${cat}` }));
 }
 function generatePanelQR(): QRConfig[] {
-  return PANEL_NAMES.map(panel => ({ type: "Panel", title: `Panel - ${panel.namaPanel}`, url: `echecksheet:///e-checksheet-panel?namaPanel=${encodeURIComponent(panel.namaPanel)}&area=${encodeURIComponent(panel.area)}`, description: panel.area }));
+  return PANEL_AREAS.map(area => ({
+    type: "Panel",
+    title: `Panel - ${area.label}`,
+    url: `echecksheet:///e-checksheet-panel?areaKey=${encodeURIComponent(area.key)}&areaLabel=${encodeURIComponent(area.label)}&_scanned=true`,
+    description: `Grup ${area.group} · ${area.months}`
+  }));
 }
 function generateStopKontakQR(): QRConfig[] {
   return STOP_KONTAK_TYPES.map(type => ({ type: "Stop Kontak", title: `Stop Kontak - ${type.replace(/-/g, " ")}`, url: `echecksheet:///status-ga/form-inspeksi-stop-kontak/${type}` }));
@@ -431,7 +425,7 @@ export default function QRGeneratorPage() {
     { id: "smoke-detector", label: "💨 Smoke Detector", count: SMOKE_DETECTOR_AREAS.length, generator: generateSmokeDetectorQR },
     { id: "emergency", label: "🔆 Emergency Lamp", count: EMERGENCY_AREAS.length, generator: generateEmergencyQR },
     { id: "exit-lamp", label: "🚪 Exit Lamp", count: EXIT_LAMP_CATEGORIES.length, generator: generateExitLampQR },
-    { id: "panel", label: "⚡ Panel", count: PANEL_NAMES.length, generator: generatePanelQR },
+    { id: "panel", label: "⚡ Panel", count: PANEL_AREAS.length, generator: generatePanelQR },
     { id: "stop-kontak", label: "🔌 Stop Kontak", count: STOP_KONTAK_TYPES.length, generator: generateStopKontakQR },
     { id: "inf-jalan", label: "🛣️ Inf. Jalan", count: INF_JALAN_AREAS.length, generator: generateInfJalanQR },
     { id: "tg-listrik", label: "🪜 Tangga Listrik", count: TG_LISTRIK_AREAS.length, generator: generateTgListrikQR },

@@ -7,6 +7,7 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const date = searchParams.get('date') || '';   // YYYY-MM-DD
     const month = searchParams.get('month') || ''; // YYYY-MM
+    const year = searchParams.get('year') || '';   // YYYY
 
     // ── Ambil header records ────────────────────────────────────────────
     const clauses: string[] = [];
@@ -18,6 +19,9 @@ export async function GET(request: NextRequest) {
     } else if (month) {
       params.push(month);
       clauses.push(`to_char(inspection_date, 'YYYY-MM') = $${params.length}`);
+    } else if (year) {
+      params.push(year);
+      clauses.push(`to_char(inspection_date, 'YYYY') = $${params.length}`);
     }
 
     const where = clauses.length ? `WHERE ${clauses.join(' AND ')}` : '';
@@ -78,22 +82,30 @@ export async function GET(request: NextRequest) {
     }
 
     // ── Bentuk sesuai InspectionEntry di frontend ───────────────────────
-    const data = recRes.rows.map(rec => ({
-      id: rec.id,
-      deptKey: rec.dept_key,
-      deptName: rec.dept_name,
-      prosesKey: rec.proses_key,
-      prosesName: rec.proses_name,
-      subName: rec.sub_name,
-      areaType: rec.area_type,
-      sourceAreaName: rec.source_area_name,
-      inspectorId: rec.inspector_id,
-      inspectorName: rec.inspector_name,
-      scanVerified: rec.scan_verified,
-      date: new Date(rec.submitted_at).toISOString(),
-      savedAt: new Date(rec.submitted_at).getTime(),
-      rows: rowsByRecord.get(rec.id) || [],
-    }));
+    const data = recRes.rows.map(rec => {
+      const submittedTime = rec.submitted_at ? new Date(rec.submitted_at).getTime() : 0;
+      const updatedTime = rec.updated_at ? new Date(rec.updated_at).getTime() : 0;
+      const isEdited = updatedTime > 0 && submittedTime > 0 && (updatedTime - submittedTime > 1500);
+
+      return {
+        id: rec.id,
+        deptKey: rec.dept_key,
+        deptName: rec.dept_name,
+        prosesKey: rec.proses_key,
+        prosesName: rec.proses_name,
+        subName: rec.sub_name,
+        areaType: rec.area_type,
+        sourceAreaName: rec.source_area_name,
+        inspectorId: rec.inspector_id,
+        inspectorName: rec.inspector_name,
+        scanVerified: rec.scan_verified,
+        date: new Date(rec.submitted_at).toISOString(),
+        savedAt: submittedTime,
+        updatedAt: rec.updated_at ? new Date(rec.updated_at).toISOString() : undefined,
+        isEdited,
+        rows: rowsByRecord.get(rec.id) || [],
+      };
+    });
 
     return NextResponse.json({ success: true, data });
   } catch (error) {

@@ -37,7 +37,7 @@ const ALL_CHECKSHEETS: Record<string, ChecksheetItem> = {
   "lift-barang": { name: "PENGECEKAN LIFT BARANG DAILY", desc: "Cek harian lift barang: limit switch, tombol, kabin", link: "lift-barang", key: "lift-barang", icon: "🛗" },
   "inspeksi-preventif-lift-barang": { name: "INSPEKSI DAN PREVENTIF LIFT BARANG", desc: "Pemeliharaan preventif lift barang", link: "inspeksi-preventif-lift-barang", key: "inspeksi-preventif-lift-barang", icon: "🔧" },
   "tg-listrik": { name: "TANGGA LISTRIK (AWP)", desc: "Cek hidrolik, rem darurat, outrigger, kontrol keselamatan", link: "tg-listrik", key: "tg-listrik", icon: "🪜" },
-  "panel": { name: "PANEL", desc: "Inspeksi panel listrik: suhu, bau, suara, grounding, ELCB", link: "panel", key: "panel", icon: "⚡" },
+  "panel": { name: "PANEL", desc: "Inspeksi panel listrik: suhu, bau, suara, grounding, ELCB", link: "e-checksheet-panel", key: "panel", icon: "⚡" },
   "form-inspeksi-stop-kontak": { name: "FORM PENGECEKAN STOP KONTAK DAN INSTALASI LISTRIK", desc: "Cek stop kontak dan instalasi listrik di area kerja", link: "form-inspeksi-stop-kontak", key: "form-inspeksi-stop-kontak", icon: "🔌" },
   "e-checksheet-apd": { name: "Form pengambilan APD", desc: "Formulir distribusi & pengambilan APD", link: "e-checksheet-apd/riwayat-apd", key: "e-checksheet-apd", icon: "🦺" },
   "inf-jalan": { name: "INSPEKSI INFRASTUKTUR JALAN", desc: "Cek kondisi jalan, trotoar, boardess pabrik", link: "inf-jalan", key: "inf-jalan", icon: "🛣️" },
@@ -202,7 +202,13 @@ export default function StatusGA() {
                   {cat.items.map((item, itemIdx) => (
                     <Link
                       key={`${catIndex}-${itemIdx}-${item.key}`}
-                      href={item.key === "inspeksi-apd" ? "/e-checksheet-ins-apd" : `/status-ga/${item.link}`}
+                      href={
+                        item.key === "inspeksi-apd"
+                          ? "/e-checksheet-ins-apd"
+                          : item.key === "panel"
+                          ? "/e-checksheet-panel"
+                          : `/status-ga/${item.link}`
+                      }
                       className="ga-check-card"
                     >
                       <div className="ga-card-icon">{item.icon}</div>

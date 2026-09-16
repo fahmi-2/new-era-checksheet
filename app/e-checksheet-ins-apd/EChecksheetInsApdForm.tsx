@@ -5,7 +5,6 @@ import { useState, useEffect, useMemo, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth, isAuthorizedForChecksheet } from "@/lib/auth-context";
 import { Sidebar } from "@/components/Sidebar";
-import { useScanVerification } from "@/lib/hooks/useScanVerification";
 import { jsPDF } from "jspdf";
 import autoTable from "jspdf-autotable";
 import {
@@ -13,6 +12,7 @@ import {
   CheckCircle2, Save, Plus, Trash2, BarChart3,
   ShieldCheck, AlertCircle, TrendingUp, Users,
   ClipboardList, Download, Loader2, RefreshCw,
+  Edit3, Clock, X, Eye, User, Search, Settings, RotateCcw, Tag,
 } from "lucide-react";
 
 // ─── STATIC DATA ─────────────────────────────────────────────────────────────
@@ -218,6 +218,28 @@ const FINDING_OPTIONS = [
   "Lain-lain",
 ];
 
+export interface ApdProblemCategory {
+  key: string;
+  label: string;
+  desc: string;
+  color: string;
+}
+
+export const APD_PROBLEM_CATEGORIES: ApdProblemCategory[] = [
+  { key: "rusak", label: "Rusak / tdk layak pakai", desc: "APD robek, patah, aus, atau fungsi proteksi menurun", color: "#ef4444" },
+  { key: "belum_dapat", label: "Belum dapat APD", desc: "Karyawan baru / belum menerima distribusi APD", color: "#f97316" },
+  { key: "hilang", label: "APD hilang", desc: "APD tertinggal, hilang, atau tidak dapat ditemukan", color: "#eab308" },
+  { key: "spesifikasi", label: "Spesifikasi APD tidak sesuai standar, size tidak ada", desc: "Ukuran tidak pas atau tidak sesuai standar K3", color: "#8b5cf6" },
+  { key: "tidak_pakai", label: "Tidak pakai tanpa alasan", desc: "Sengaja tidak mengenakan APD saat bekerja", color: "#dc2626" },
+  { key: "cara_pakai", label: "Cara pakai APD tidak sesuai standar", desc: "Posisi pakai salah atau tidak melindungi area kerja", color: "#06b6d4" },
+  { key: "lain_lain", label: "Lain-lain", desc: "Temuan kondisi abnormal lainnya", color: "#64748b" },
+];
+
+export const MONTH_NAMES_ID = [
+  "Januari", "Februari", "Maret", "April", "Mei", "Juni",
+  "Juli", "Agustus", "September", "Oktober", "November", "Desember"
+];
+
 // ─── TYPES ────────────────────────────────────────────────────────────────────
 
 // Satu "baris inspeksi" = satu proses + sub + area/CV
@@ -256,6 +278,8 @@ interface InspectionEntry {
   date: string;
   rows: InspectionRow[];
   savedAt: number;
+  updatedAt?: string;
+  isEdited?: boolean;
 }
 
 // ─── ACCENT COLORS ────────────────────────────────────────────────────────────
@@ -360,6 +384,17 @@ const CSS = `
   .chart-fill  { height:100%; border-radius:999px; display:flex; align-items:center;
     padding-left:8px; transition:width .5s; }
   .chart-fill span { font-size:11px; font-weight:700; color:#fff; white-space:nowrap; }
+
+  /* Action buttons */
+  .act-btn { display:inline-flex; align-items:center; gap:5px; padding:6px 12px;
+    border-radius:8px; font-size:12px; font-weight:600; cursor:pointer; font-family:inherit;
+    transition:all .15s; text-decoration:none; line-height:1.2; }
+  .act-btn-detail { background:#f1f5f9; border:1px solid #cbd5e1; color:#334155; }
+  .act-btn-detail:hover { background:#e2e8f0; color:#0f172a; }
+  .act-btn-edit { background:#eff6ff; border:1px solid #bfdbfe; color:#1d4ed8; }
+  .act-btn-edit:hover { background:#dbeafe; color:#1e40af; }
+  .act-btn-del { background:#fef2f2; border:1px solid #fecaca; color:#dc2626; }
+  .act-btn-del:hover { background:#fee2e2; color:#b91c1c; }
 `;
 
 // ─── HELPERS ──────────────────────────────────────────────────────────────────
@@ -465,7 +500,7 @@ const SectionTitle = ({ ch }: { ch: string }) =>
 // ─── ROW FORM COMPONENT ───────────────────────────────────────────────────────
 
 function AreaRowForm({
-  row, isCV, idx, canDelete, acColor,
+  row, isCV, idx, canDelete, acColor, labelDisplay,
   onChange, onDelete,
 }: {
   row: InspectionRow;
@@ -473,6 +508,7 @@ function AreaRowForm({
   idx: number;
   canDelete: boolean;
   acColor: AC;
+  labelDisplay?: string;
   onChange: (r: InspectionRow) => void;
   onDelete: () => void;
 }) {
@@ -525,7 +561,7 @@ function AreaRowForm({
             </div>
           ) : (
             <div style={{ fontSize: 13, fontWeight: 700, color: "#1e293b" }}>
-              {row.area || <span style={{ color: "#94a3b8" }}>— Area belum dipilih —</span>}
+              {labelDisplay || row.area || <span style={{ color: "#94a3b8" }}>— Area belum dipilih —</span>}
             </div>
           )}
           {row.jumlahMP > 0 && (
@@ -710,13 +746,12 @@ function AreaRowForm({
 
 // ─── MAIN COMPONENT ───────────────────────────────────────────────────────────
 
-type Page = "inspection" | "summary";
+type Page = "inspection" | "summary" | "edit";
 
 export function EChecksheetInsApdForm() {
   const router = useRouter();
   const params = useSearchParams();
   const { user, loading: authLoading, isInitialized } = useAuth();
-  const { isScanned } = useScanVerification();
 
   const areaNameParam = params.get("areaName") || "Area";
   const areaType = params.get("areaType") || "";
@@ -738,15 +773,81 @@ export function EChecksheetInsApdForm() {
   const [selSub, setSelSub] = useState("");
   const [selArea, setSelArea] = useState("");
   const [rows, setRows] = useState<InspectionRow[]>([]);
-  const [selDate, setSelDate] = useState("");
   const [isSaving, setIsSaving] = useState(false);
   const [entries, setEntries] = useState<InspectionEntry[]>([]);
   const [loadingEntries, setLoadingEntries] = useState(false);
   const [saveError, setSaveError] = useState("");
   const [isExportingPdf, setIsExportingPdf] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false); // preview/konfirmasi sebelum simpan
-  const [summaryTab, setSummaryTab] = useState<"ringkasan" | "bulanan">("ringkasan"); // tab tabel 1. Summary Prosentase
-  const [problemTab, setProblemTab] = useState<"ringkasan" | "bulanan">("ringkasan"); // tab tabel 2 & 3. Summary Problem / Grafik
+  const [summaryTab, setSummaryTab] = useState<"ringkasan" | "bulanan">("ringkasan"); // tab tabel Summary Prosentase
+
+  // state edit & hapus data riwayat
+  const [editingEntry, setEditingEntry] = useState<InspectionEntry | null>(null);
+  const [editRows, setEditRows] = useState<InspectionRow[]>([]);
+  const [isSavingEdit, setIsSavingEdit] = useState(false);
+  const [editError, setEditError] = useState("");
+  const [deletingEntry, setDeletingEntry] = useState<InspectionEntry | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState("");
+
+  // state modal detail inspeksi
+  const [viewingEntry, setViewingEntry] = useState<InspectionEntry | null>(null);
+
+  // filter mandiri untuk tabel & sesi riwayat inspeksi
+  const [historySearch, setHistorySearch] = useState("");
+  const [historyDeptFilter, setHistoryDeptFilter] = useState("");
+  const [useIndependentFilter, setUseIndependentFilter] = useState(false);
+  const [localHistoryYear, setLocalHistoryYear] = useState(new Date().getFullYear());
+  const [localHistoryMonth, setLocalHistoryMonth] = useState("");
+
+  // ── Master Labels state ───────────────────────────────────────────────
+  // Menyimpan custom label & deleted markers dari database: { dept: {key: name}, proses: {key: name}, area: {compositeKey: name}, deleted: {key: 'DELETED'} }
+  const [masterLabels, setMasterLabels] = useState<{
+    dept: Record<string, string>;
+    proses: Record<string, string>;
+    area: Record<string, string>;
+    deleted: Record<string, string>;
+  }>({ dept: {}, proses: {}, area: {}, deleted: {} });
+  const [customMasterItems, setCustomMasterItems] = useState<{
+    dept: any[];
+    proses: any[];
+    sub: any[];
+    area: any[];
+  }>({ dept: [], proses: [], sub: [], area: [] });
+  const [loadingLabels, setLoadingLabels] = useState(false);
+  const [savingLabel, setSavingLabel] = useState(""); // key yang sedang disimpan
+  const [deletingMasterKey, setDeletingMasterKey] = useState(""); // key yang sedang dihapus
+
+  // Sub-tab halaman Edit
+  const [editPageTab, setEditPageTab] = useState<"riwayat" | "master-data">("riwayat");
+
+  // State form rename (edit master data)
+  const [renameDeptKey, setRenameDeptKey] = useState<string | null>(null);
+  const [renameDeptVal, setRenameDeptVal] = useState("");
+  const [renameProsesKey, setRenameProsesKey] = useState<string | null>(null);
+  const [renameProsesVal, setRenameProsesVal] = useState("");
+  const [renameAreaKey, setRenameAreaKey] = useState<string | null>(null);
+  const [renameAreaVal, setRenameAreaVal] = useState("");
+  // Untuk area: perlu pilih proses & sub dulu
+  const [masterAreaProses, setMasterAreaProses] = useState(""); // prosesKey
+  const [masterAreaSub, setMasterAreaSub] = useState("");    // subName
+
+  // State Modal Tambah Master Data
+  const [showAddDeptModal, setShowAddDeptModal] = useState(false);
+  const [newDeptName, setNewDeptName] = useState("");
+  const [showAddProsesModal, setShowAddProsesModal] = useState(false);
+  const [newProsesDeptKey, setNewProsesDeptKey] = useState("");
+  const [newProsesName, setNewProsesName] = useState("");
+  const [newProsesAreaType, setNewProsesAreaType] = useState<"predefined-per-sub" | "cv" | "none">("predefined-per-sub");
+  const [showAddSubModal, setShowAddSubModal] = useState(false);
+  const [newSubProsesKey, setNewSubProsesKey] = useState("");
+  const [newSubName, setNewSubName] = useState("");
+  const [showAddAreaModal, setShowAddAreaModal] = useState(false);
+  const [newAreaProsesKey, setNewAreaProsesKey] = useState("");
+  const [newAreaSubName, setNewAreaSubName] = useState("");
+  const [newAreaName, setNewAreaName] = useState("");
+  const [isAddingMaster, setIsAddingMaster] = useState(false);
+  const [addMasterError, setAddMasterError] = useState("");
 
   const wizardRef = useRef<HTMLDivElement>(null);
   const scrollUp = () => wizardRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -774,12 +875,255 @@ export function EChecksheetInsApdForm() {
     }
   };
 
+  // ── fetch master labels & custom items dari database ───────────────────
+  const loadMasterLabels = async () => {
+    setLoadingLabels(true);
+    try {
+      const res = await fetch("/e-checksheet-ga/api/apd/master-labels");
+      if (!res.ok) return;
+      const json = await res.json();
+      if (json.success) {
+        setMasterLabels({
+          dept: json.data?.dept || {},
+          proses: json.data?.proses || {},
+          area: json.data?.area || {},
+          deleted: json.data?.deleted || {},
+        });
+        if (json.customItems) {
+          setCustomMasterItems({
+            dept: json.customItems.dept || [],
+            proses: json.customItems.proses || [],
+            sub: json.customItems.sub || [],
+            area: json.customItems.area || [],
+          });
+        }
+      }
+    } catch (err) {
+      console.error("Fetch master labels error:", err);
+    } finally {
+      setLoadingLabels(false);
+    }
+  };
+
+  // ── simpan satu label ke database ─────────────────────────────────────
+  const saveMasterLabel = async (
+    label_type: "dept" | "proses" | "area",
+    key: string,
+    custom_name: string
+  ) => {
+    setSavingLabel(key);
+    try {
+      const res = await fetch("/e-checksheet-ga/api/apd/master-labels", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ label_type, key, custom_name }),
+      });
+      const json = await res.json();
+      if (json.success) {
+        // update state lokal tanpa refetch
+        setMasterLabels(prev => ({
+          ...prev,
+          [label_type]: custom_name.trim()
+            ? { ...prev[label_type], [key]: custom_name.trim() }
+            : Object.fromEntries(Object.entries(prev[label_type]).filter(([k]) => k !== key)),
+        }));
+      }
+    } catch (err) {
+      console.error("Save master label error:", err);
+    } finally {
+      setSavingLabel("");
+      setRenameDeptKey(null);
+      setRenameProsesKey(null);
+      setRenameAreaKey(null);
+    }
+  };
+
+  // ── tambah item master (dept, proses, sub, area) ──────────────────────
+  const handleAddMasterItem = async (
+    item_type: "dept" | "proses" | "sub" | "area",
+    item_name: string,
+    parent_key?: string,
+    area_type?: string
+  ) => {
+    if (!item_name.trim()) return;
+    setIsAddingMaster(true);
+    setAddMasterError("");
+    try {
+      const res = await fetch("/e-checksheet-ga/api/apd/master-labels", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          item_type,
+          item_name: item_name.trim(),
+          parent_key,
+          area_type: area_type || "predefined-per-sub",
+        }),
+      });
+      const json = await res.json();
+      if (!res.ok || !json.success) {
+        throw new Error(json.message || `Gagal menambah ${item_type}`);
+      }
+      // reload master labels & custom items
+      await loadMasterLabels();
+      setShowAddDeptModal(false);
+      setShowAddProsesModal(false);
+      setShowAddSubModal(false);
+      setShowAddAreaModal(false);
+      setNewDeptName("");
+      setNewProsesName("");
+      setNewSubName("");
+      setNewAreaName("");
+    } catch (err) {
+      console.error(`Add master ${item_type} error:`, err);
+      setAddMasterError(err instanceof Error ? err.message : "Gagal menambah data");
+    } finally {
+      setIsAddingMaster(false);
+    }
+  };
+
+  // ── hapus item master (dept, proses, sub, area) ───────────────────────
+  const handleDeleteMasterItem = async (
+    item_type: "dept" | "proses" | "sub" | "area",
+    key: string,
+    displayName: string
+  ) => {
+    const confirmMsg = `Yakin ingin menghapus ${item_type.toUpperCase()} "${displayName}"?\n\nPerhatian: Item ini akan disembunyikan dari daftar pilihan inspeksi.`;
+    if (!window.confirm(confirmMsg)) return;
+
+    setDeletingMasterKey(key);
+    try {
+      const res = await fetch("/e-checksheet-ga/api/apd/master-labels", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ item_type, key }),
+      });
+      const json = await res.json();
+      if (!res.ok || !json.success) {
+        alert(json.message || `Gagal menghapus ${item_type}`);
+        return;
+      }
+      // Jika yang dihapus sedang dipilih di form atau masterArea, reset
+      if (item_type === "dept" && selDept?.deptKey === key) {
+        setSelDept(null);
+        setStep(0);
+      }
+      if (item_type === "proses" && (selProc?.key === key || masterAreaProses === key)) {
+        if (selProc?.key === key) { setSelProc(null); setStep(1); }
+        if (masterAreaProses === key) { setMasterAreaProses(""); setMasterAreaSub(""); }
+      }
+      if (item_type === "sub" && (selSub === key || masterAreaSub === key)) {
+        if (selSub === key) setSelSub("");
+        if (masterAreaSub === key) setMasterAreaSub("");
+      }
+
+      await loadMasterLabels();
+    } catch (err) {
+      console.error(`Delete master ${item_type} error:`, err);
+      alert("Terjadi kesalahan saat menghapus data");
+    } finally {
+      setDeletingMasterKey("");
+    }
+  };
+
+  // ── helper: resolve label dengan custom override ───────────────────────
+  const resolveLabel = (
+    type: "dept" | "proses" | "area",
+    key: string,
+    defaultName: string
+  ): string => masterLabels[type][key] ?? defaultName;
+
   useEffect(() => {
     if (mounted && isInitialized && !authLoading && user) {
       loadEntries();
+      loadMasterLabels();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mounted, isInitialized, authLoading, !!user]);
+
+  // ── Struktur Master Dinamis (Gabungan DEPT_CONFIG bawaan + Custom Items - Deleted) ──
+  const dynamicDeptConfig = useMemo((): DeptConfig[] => {
+    // 1. Ambil daftar dept bawaan yang belum dihapus
+    const baseDepts: DeptConfig[] = DEPT_CONFIG
+      .filter(d => !masterLabels.deleted[d.deptKey])
+      .map(d => ({
+        deptKey: d.deptKey,
+        deptName: d.deptName,
+        proses: d.proses
+          .filter(p => !masterLabels.deleted[p.key])
+          .map(p => ({
+            key: p.key,
+            name: p.name,
+            areaType: p.areaType,
+            subs: p.subs
+              .filter(s => !masterLabels.deleted[`${p.key}::${s.name}`])
+              .map(s => ({
+                name: s.name,
+                areas: s.areas.filter(a => !masterLabels.deleted[`${p.key}::${s.name}::${a}`]),
+              })),
+          })),
+      }));
+
+    // 2. Tambahkan custom depts
+    const customDeptsList = customMasterItems.dept.filter(d => !masterLabels.deleted[d.item_key]);
+    for (const cd of customDeptsList) {
+      if (!baseDepts.some(b => b.deptKey === cd.item_key)) {
+        baseDepts.push({
+          deptKey: cd.item_key,
+          deptName: cd.item_name,
+          proses: [],
+        });
+      }
+    }
+
+    // 3. Tambahkan custom proses ke dept yang sesuai
+    const customProsesList = customMasterItems.proses.filter(p => !masterLabels.deleted[p.item_key]);
+    for (const cp of customProsesList) {
+      const parentDept = baseDepts.find(d => d.deptKey === cp.parent_key);
+      if (parentDept && !parentDept.proses.some(p => p.key === cp.item_key)) {
+        parentDept.proses.push({
+          key: cp.item_key,
+          name: cp.item_name,
+          areaType: (cp.area_type as any) || "predefined-per-sub",
+          subs: [],
+        });
+      }
+    }
+
+    // 4. Tambahkan custom subs ke proses yang sesuai
+    const customSubsList = customMasterItems.sub.filter(s => !masterLabels.deleted[s.item_key]);
+    for (const cs of customSubsList) {
+      for (const d of baseDepts) {
+        const proc = d.proses.find(p => p.key === cs.parent_key);
+        if (proc && !proc.subs.some(s => s.name === cs.item_name)) {
+          proc.subs.push({
+            name: cs.item_name,
+            areas: [],
+          });
+        }
+      }
+    }
+
+    // 5. Tambahkan custom areas ke sub yang sesuai
+    const customAreasList = customMasterItems.area.filter(a => !masterLabels.deleted[a.item_key]);
+    for (const ca of customAreasList) {
+      // ca.parent_key format: "prosesKey::subName"
+      const [pKey, ...restSub] = (ca.parent_key || "").split("::");
+      const sName = restSub.join("::");
+      if (pKey && sName) {
+        for (const d of baseDepts) {
+          const proc = d.proses.find(p => p.key === pKey);
+          if (proc) {
+            const sub = proc.subs.find(s => s.name === sName);
+            if (sub && !sub.areas.includes(ca.item_name)) {
+              sub.areas.push(ca.item_name);
+            }
+          }
+        }
+      }
+    }
+
+    return baseDepts;
+  }, [customMasterItems, masterLabels.deleted]);
 
   // derived
   const currentSub = selProc?.subs?.find(s => s.name === selSub);
@@ -860,15 +1204,14 @@ export function EChecksheetInsApdForm() {
     try {
       const payload = {
         deptKey: selDept.deptKey,
-        deptName: selDept.deptName,
+        deptName: resolveLabel("dept", selDept.deptKey, selDept.deptName),
         prosesKey: selProc.key,
-        prosesName: selProc.name,
+        prosesName: resolveLabel("proses", selProc.key, selProc.name),
         subName: selSub,
         areaType: isCV ? "cv" : areaOptions.length > 0 ? "predefined-per-sub" : "none",
         sourceAreaName: areaNameParam,
         inspectorId: (user as any)?.nik || (user as any)?.id || "",
         inspectorName: user?.fullName || "",
-        scanVerified: isScanned,
         rows: rows.map(r => ({
           area: r.area,
           jumlahMP: r.jumlahMP,
@@ -919,13 +1262,123 @@ export function EChecksheetInsApdForm() {
     }
   };
 
-  // ── computed ──────────────────────────────────────────────────────────────
+  // ── edit & delete riwayat handler ─────────────────────────────────────────
+  const handleOpenEdit = (entry: InspectionEntry) => {
+    setEditingEntry(entry);
+    setEditError("");
+    const clonedRows: InspectionRow[] = JSON.parse(JSON.stringify(entry.rows || []));
+    setEditRows(clonedRows);
+  };
 
-  // Jika filter bulan diisi, seluruh Summary (Ringkasan & Bulanan) difokuskan
-  // ke bulan tersebut — bukan hanya ke bulan persisnya.
-  const summaryEntries = useMemo(() =>
-    selDate ? entries.filter(e => e.date.slice(0, 7) === selDate) : entries,
-    [entries, selDate]);
+  const handleUpdateEditRow = (rowId: string, updated: InspectionRow) => {
+    setEditRows(prev => prev.map(r => r.id === rowId ? updated : r));
+  };
+
+  const handleAddEditCvRow = () => {
+    setEditRows(prev => [...prev, mkRow("")]);
+  };
+
+  const handleDeleteEditCvRow = (rowId: string) => {
+    setEditRows(prev => prev.filter(r => r.id !== rowId));
+  };
+
+  const handleSaveEdit = async () => {
+    if (!editingEntry) return;
+    setIsSavingEdit(true);
+    setEditError("");
+
+    try {
+      const isCVEdit = editingEntry.areaType === "cv" ||
+        (editingEntry.subName === "Checker & Packing" && editingEntry.prosesKey === "qa-final-assy");
+
+      if (isCVEdit && !editRows.some(r => r.area.trim())) {
+        throw new Error("Isi minimal satu nama Conveyor");
+      }
+
+      if (editRows.length === 0) {
+        throw new Error("Belum ada baris inspeksi area");
+      }
+
+      const payload = {
+        id: editingEntry.id,
+        rows: editRows.map(r => ({
+          area: r.area,
+          jumlahMP: r.jumlahMP,
+          okCount: r.okCount,
+          nokCount: r.nokCount,
+          nokDetails: r.nokDetails.map(n => ({
+            nik: n.nik,
+            finding: n.finding,
+            findingCustom: n.findingCustom,
+            tindakan: n.tindakan,
+            pic: n.pic,
+          })),
+        })),
+      };
+
+      const res = await fetch("/e-checksheet-ga/api/apd/inspections/edit", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+
+      const json = await res.json();
+      if (!res.ok || !json.success) {
+        throw new Error(json.message || "Gagal memperbarui data inspeksi");
+      }
+
+      await loadEntries();
+      setEditingEntry(null);
+    } catch (err) {
+      console.error("Edit save error:", err);
+      setEditError(err instanceof Error ? err.message : "Gagal memperbarui data");
+    } finally {
+      setIsSavingEdit(false);
+    }
+  };
+
+  const handleDeleteEntry = async () => {
+    if (!deletingEntry) return;
+    setIsDeleting(true);
+    setDeleteError("");
+
+    try {
+      const res = await fetch("/e-checksheet-ga/api/apd/inspections/delete", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: deletingEntry.id }),
+      });
+
+      const json = await res.json();
+      if (!res.ok || !json.success) {
+        throw new Error(json.message || "Gagal menghapus data inspeksi");
+      }
+
+      await loadEntries();
+      setDeletingEntry(null);
+    } catch (err) {
+      console.error("Delete error:", err);
+      setDeleteError(err instanceof Error ? err.message : "Gagal menghapus data");
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  const CURRENT_YEAR = new Date().getFullYear();
+  const [historyYear, setHistoryYear] = useState(CURRENT_YEAR);
+  const [historyMonthFilter, setHistoryMonthFilter] = useState<string>(""); // "" = semua bulan
+
+  // ── computed ──────────────────────────────────────────────────────────────
+  // Sesi / entri yang cocok dengan tahun & bulan filter aktif
+  const summaryEntries = useMemo(() => {
+    return entries.filter(e => {
+      const d = new Date(e.date);
+      const matchYear = d.getFullYear() === historyYear;
+      const mName = MONTH_NAMES_ID[d.getMonth()];
+      const matchMonth = !historyMonthFilter || mName === historyMonthFilter;
+      return matchYear && matchMonth;
+    });
+  }, [entries, historyYear, historyMonthFilter]);
 
   const overallPct = useMemo(() => {
     if (!summaryEntries.length) return 0;
@@ -933,47 +1386,69 @@ export function EChecksheetInsApdForm() {
     return Math.round(v.reduce((a, b) => a + b) / v.length);
   }, [summaryEntries]);
 
+  // Total MP, OK, NOK di seluruh summaryEntries aktif
+  const totalMpActive = useMemo(() =>
+    summaryEntries.reduce((s, e) => s + e.rows.reduce((a, r) => a + r.jumlahMP, 0), 0)
+  , [summaryEntries]);
+
+  const totalOkActive = useMemo(() =>
+    summaryEntries.reduce((s, e) => s + e.rows.reduce((a, r) => a + r.okCount, 0), 0)
+  , [summaryEntries]);
+
+  const totalNokActive = useMemo(() =>
+    summaryEntries.reduce((s, e) => s + e.rows.reduce((a, r) => a + r.nokCount, 0), 0)
+  , [summaryEntries]);
+
   const summaryRows = useMemo(() =>
-    DEPT_CONFIG.flatMap(dept =>
+    dynamicDeptConfig.flatMap(dept =>
       dept.proses.map(proc => {
         const rel = summaryEntries.filter(e => e.prosesKey === proc.key);
         const totalMP = rel.reduce((s, e) => s + e.rows.reduce((a, r) => a + r.jumlahMP, 0), 0);
         const totalOK = rel.reduce((s, e) => s + e.rows.reduce((a, r) => a + r.okCount, 0), 0);
         const totalNOK = rel.reduce((s, e) => s + e.rows.reduce((a, r) => a + r.nokCount, 0), 0);
         const pct = totalMP > 0 ? Math.round((totalOK / totalMP) * 100) : 0;
-        return { deptName: dept.deptName, prosesName: proc.name, totalMP, totalOK, totalNOK, pct };
+        const resolvedDept = resolveLabel("dept", dept.deptKey, dept.deptName);
+        const resolvedProses = resolveLabel("proses", proc.key, proc.name);
+        return { deptName: resolvedDept, prosesName: resolvedProses, totalMP, totalOK, totalNOK, pct };
       })
-    ), [summaryEntries]);
+    ), [summaryEntries, masterLabels, dynamicDeptConfig]);
 
-  // Rekap bulanan: %OK per proses untuk tiap bulan (Jan–Des) dalam satu tahun.
-  // Jika filter bulan diisi, hanya bulan tsb yang ditampilkan; jika tidak, 12 bulan penuh.
-  const activeMonthIdx = selDate ? Number(selDate.slice(5, 7)) - 1 : -1;
+  // Rekap bulanan: %OK per proses untuk tiap bulan (Jan–Des) dalam tahun terpilih
+  const activeMonthIdx = historyMonthFilter ? MONTH_NAMES_ID.indexOf(historyMonthFilter) : -1;
   const monthIndexesShown = activeMonthIdx >= 0 ? [activeMonthIdx] : MONTHS.map((_, i) => i);
 
   const monthlySummaryRows = useMemo(() =>
-    DEPT_CONFIG.flatMap(dept =>
+    dynamicDeptConfig.flatMap(dept =>
       dept.proses.map(proc => {
-        const relAll = entries.filter(e => e.prosesKey === proc.key);
+        const relAll = entries.filter(e => {
+          const d = new Date(e.date);
+          return e.prosesKey === proc.key && d.getFullYear() === historyYear;
+        });
         const perMonth = MONTHS.map((_, mIdx) => {
           const rel = relAll.filter(e => new Date(e.date).getMonth() === mIdx);
           const totalMP = rel.reduce((s, e) => s + e.rows.reduce((a, r) => a + r.jumlahMP, 0), 0);
           const totalOK = rel.reduce((s, e) => s + e.rows.reduce((a, r) => a + r.okCount, 0), 0);
           return totalMP > 0 ? Math.round((totalOK / totalMP) * 100) : null;
         });
-        return { deptName: dept.deptName, prosesName: proc.name, perMonth };
+        const resolvedDept = resolveLabel("dept", dept.deptKey, dept.deptName);
+        const resolvedProses = resolveLabel("proses", proc.key, proc.name);
+        return { deptName: resolvedDept, prosesName: resolvedProses, perMonth };
       })
-    ), [entries]);
+    ), [entries, historyYear, masterLabels, dynamicDeptConfig]);
 
-  // Overall %OK per bulan, dipakai untuk grafik tren bulanan
+  // Overall %OK per bulan pada tahun terpilih
   const monthlyOverall = useMemo(() =>
     MONTHS.map((_, mIdx) => {
-      const rel = entries.filter(e => new Date(e.date).getMonth() === mIdx);
+      const rel = entries.filter(e => {
+        const d = new Date(e.date);
+        return d.getFullYear() === historyYear && d.getMonth() === mIdx;
+      });
       const totalMP = rel.reduce((s, e) => s + e.rows.reduce((a, r) => a + r.jumlahMP, 0), 0);
       const totalOK = rel.reduce((s, e) => s + e.rows.reduce((a, r) => a + r.okCount, 0), 0);
       return totalMP > 0 ? Math.round((totalOK / totalMP) * 100) : 0;
-    }), [entries]);
+    }), [entries, historyYear]);
 
-  // problem aggregation from nokDetails (filtered for Ringkasan)
+  // Problem counts pada summaryEntries (memperhitungkan filter bulan jika aktif)
   const problemCounts = useMemo(() => {
     const counts: Record<string, number> = {};
     FINDING_OPTIONS.forEach(f => { counts[f] = 0; });
@@ -986,42 +1461,73 @@ export function EChecksheetInsApdForm() {
 
   const totalProblems = Object.values(problemCounts).reduce((a, b) => a + b, 0);
 
-  // Rekap bulanan Problem: jumlah temuan per kategori per bulan (Jan–Des)
+  // Rekap bulanan Problem untuk tahun terpilih: jumlah temuan per kategori per bulan (Jan–Des)
   const monthlyProblemRows = useMemo(() =>
-    FINDING_OPTIONS.map(cat => {
+    APD_PROBLEM_CATEGORIES.map(cat => {
       const perMonth = MONTHS.map((_, mIdx) => {
-        const rel = entries.filter(e => new Date(e.date).getMonth() === mIdx);
+        const rel = entries.filter(e => {
+          const d = new Date(e.date);
+          return d.getFullYear() === historyYear && d.getMonth() === mIdx;
+        });
         let cnt = 0;
         rel.forEach(e => e.rows.forEach(r => r.nokDetails.forEach(n => {
           const key = n.finding || "Lain-lain";
-          if (key === cat) cnt++;
+          if (key === cat.label) cnt++;
         })));
         return cnt;
       });
       const totalYear = perMonth.reduce((a, b) => a + b, 0);
-      return { category: cat, perMonth, totalYear };
-    }), [entries]);
+      return { ...cat, perMonth, totalYear };
+    }), [entries, historyYear]);
 
-  // Total temuan problem per bulan (Jan–Des)
+  // Total temuan problem per bulan (Jan–Des) untuk tahun terpilih
   const monthlyTotalProblems = useMemo(() =>
     MONTHS.map((_, mIdx) => {
-      const rel = entries.filter(e => new Date(e.date).getMonth() === mIdx);
-      let cnt = 0;
-      rel.forEach(e => e.rows.forEach(r => r.nokDetails.forEach(n => {
-        if (n.finding || n.nik) cnt++;
-      })));
-      return cnt;
-    }), [entries]);
+      return monthlyProblemRows.reduce((sum, r) => sum + r.perMonth[mIdx], 0);
+    }), [monthlyProblemRows]);
 
-  const overallTotalProblemsYear = monthlyTotalProblems.reduce((a, b) => a + b, 0);
+  const overallTotalProblemsYear = monthlyProblemRows.reduce((a, b) => a + b.totalYear, 0);
 
-  const canSave = !!(selSub && isScanned && rows.length > 0 &&
+  const canSave = !!(selSub && rows.length > 0 &&
     (isCV ? rows.some(r => r.area.trim()) : rows.length > 0));
 
-  // Riwayat inspeksi difilter berdasarkan bulan pilihan (opsional) di halaman Summary
-  const filteredEntries = useMemo(() =>
-    selDate ? entries.filter(e => e.date.slice(0, 7) === selDate) : entries,
-    [entries, selDate]);
+  // Riwayat inspeksi: mendukung filter tersendiri (tahun, bulan, departemen, dan kata kunci pencarian)
+  const filteredHistoryEntries = useMemo(() => {
+    const yr = useIndependentFilter ? localHistoryYear : historyYear;
+    const mo = useIndependentFilter ? localHistoryMonth : historyMonthFilter;
+
+    return entries.filter(e => {
+      const d = new Date(e.date);
+      const matchYear = !yr || d.getFullYear() === yr;
+      const mName = MONTH_NAMES_ID[d.getMonth()];
+      const matchMonth = !mo || mName === mo;
+      const matchDept = !historyDeptFilter || e.deptKey === historyDeptFilter || e.deptName === historyDeptFilter;
+
+      let matchSearch = true;
+      if (historySearch.trim()) {
+        const q = historySearch.toLowerCase().trim();
+        const inDept = e.deptName.toLowerCase().includes(q);
+        const inProc = e.prosesName.toLowerCase().includes(q);
+        const inSub = e.subName.toLowerCase().includes(q);
+        const inPic = (e.inspectorName || "").toLowerCase().includes(q);
+        const inRows = e.rows.some(r =>
+          r.area.toLowerCase().includes(q) ||
+          r.nokDetails.some(n =>
+            n.nik.toLowerCase().includes(q) ||
+            n.finding.toLowerCase().includes(q) ||
+            (n.findingCustom || "").toLowerCase().includes(q) ||
+            (n.pic || "").toLowerCase().includes(q) ||
+            (n.tindakan || "").toLowerCase().includes(q)
+          )
+        );
+        matchSearch = inDept || inProc || inSub || inPic || inRows;
+      }
+
+      return matchYear && matchMonth && matchDept && matchSearch;
+    });
+  }, [entries, useIndependentFilter, localHistoryYear, localHistoryMonth, historyYear, historyMonthFilter, historyDeptFilter, historySearch]);
+
+  const filteredEntries = filteredHistoryEntries;
 
   // ── EXPORT PDF FUNCTION ───────────────────────────────────────────────────
   const exportToPdf = () => {
@@ -1044,9 +1550,7 @@ export function EChecksheetInsApdForm() {
       doc.setFontSize(9);
       doc.setFont("helvetica", "normal");
       doc.setTextColor(203, 213, 225);
-      const filterInfo = selDate
-        ? `Filter Bulan: ${selDate}`
-        : "Periode: Seluruh Riwayat Inspeksi";
+      const filterInfo = `Tahun: ${historyYear}${historyMonthFilter ? ` · Bulan: ${historyMonthFilter}` : " · Seluruh Bulan"}`;
       doc.text(filterInfo, pageWidth / 2, 19, { align: "center" });
       doc.text(
         `Dicetak: ${new Date().toLocaleString("id-ID", { dateStyle: "long", timeStyle: "short" })} | Oleh: ${user?.fullName || "Inspector"}`,
@@ -1088,11 +1592,54 @@ export function EChecksheetInsApdForm() {
 
       let curY = startY + 18;
 
-      // ── Section 1: Tabel Summary Prosentase ──
+      // ── Section 1: Summary Problem / Temuan Abnormal ──
       doc.setFontSize(10);
       doc.setFont("helvetica", "bold");
       doc.setTextColor(30, 41, 59);
-      doc.text("1. Ringkasan Prosentase Pengecekan APD per Proses", 14, curY);
+      doc.text("1. Summary Problem / Temuan Abnormal", 14, curY);
+
+      const tableDataProblem = APD_PROBLEM_CATEGORIES.map((cat, i) => {
+        const cnt = problemCounts[cat.label] || 0;
+        const pct = totalProblems ? Math.round((cnt / totalProblems) * 100) : 0;
+        return [String(i + 1), cat.label, cnt > 0 ? String(cnt) : "-", cnt > 0 ? `${pct}%` : "-"];
+      });
+
+      tableDataProblem.push(["", "Total Temuan", String(totalProblems || "-"), "100%"]);
+
+      autoTable(doc, {
+        startY: curY + 2,
+        head: [["No", "Problem / Temuan Abnormal", "Jumlah", "%"]],
+        body: tableDataProblem,
+        theme: "grid",
+        styles: { fontSize: 8, cellPadding: 2, font: "helvetica", textColor: [30, 41, 59] },
+        headStyles: { fillColor: [225, 29, 72], textColor: [255, 255, 255], fontStyle: "bold", halign: "center" },
+        columnStyles: {
+          0: { halign: "center", cellWidth: 10 },
+          1: { halign: "left" },
+          2: { halign: "center", cellWidth: 25, textColor: [220, 38, 38], fontStyle: "bold" },
+          3: { halign: "center", cellWidth: 25, fontStyle: "bold" },
+        },
+        didParseCell: (data) => {
+          if (data.row.index === tableDataProblem.length - 1) {
+            data.cell.styles.fontStyle = "bold";
+            data.cell.styles.fillColor = [254, 242, 242];
+          }
+        },
+        margin: { left: 14, right: 14 },
+      });
+
+      curY = (doc as any).lastAutoTable.finalY + 8;
+
+      // ── Section 2: Tabel Summary Prosentase ──
+      if (curY > pageHeight - 65) {
+        doc.addPage();
+        curY = 16;
+      }
+
+      doc.setFontSize(10);
+      doc.setFont("helvetica", "bold");
+      doc.setTextColor(30, 41, 59);
+      doc.text("2. Ringkasan Prosentase Pengecekan APD per Proses", 14, curY);
 
       const tableData1 = summaryRows.map((r, i) => [
         String(i + 1),
@@ -1138,49 +1685,6 @@ export function EChecksheetInsApdForm() {
             if (data.column.index === 1) {
               data.cell.colSpan = 2;
             }
-          }
-        },
-        margin: { left: 14, right: 14 },
-      });
-
-      curY = (doc as any).lastAutoTable.finalY + 8;
-
-      // ── Section 2: Summary Problem / Temuan Abnormal ──
-      if (curY > pageHeight - 65) {
-        doc.addPage();
-        curY = 16;
-      }
-
-      doc.setFontSize(10);
-      doc.setFont("helvetica", "bold");
-      doc.setTextColor(30, 41, 59);
-      doc.text("2. Summary Problem / Temuan Abnormal", 14, curY);
-
-      const tableData2 = FINDING_OPTIONS.map((cat, i) => {
-        const cnt = problemCounts[cat] || 0;
-        const pct = totalProblems ? Math.round((cnt / totalProblems) * 100) : 0;
-        return [String(i + 1), cat, cnt > 0 ? String(cnt) : "-", cnt > 0 ? `${pct}%` : "-"];
-      });
-
-      tableData2.push(["", "Total Temuan", String(totalProblems || "-"), "100%"]);
-
-      autoTable(doc, {
-        startY: curY + 2,
-        head: [["No", "Problem / Temuan Abnormal", "Jumlah", "%"]],
-        body: tableData2,
-        theme: "grid",
-        styles: { fontSize: 8, cellPadding: 2, font: "helvetica", textColor: [30, 41, 59] },
-        headStyles: { fillColor: [225, 29, 72], textColor: [255, 255, 255], fontStyle: "bold", halign: "center" },
-        columnStyles: {
-          0: { halign: "center", cellWidth: 10 },
-          1: { halign: "left" },
-          2: { halign: "center", cellWidth: 25, textColor: [220, 38, 38], fontStyle: "bold" },
-          3: { halign: "center", cellWidth: 25, fontStyle: "bold" },
-        },
-        didParseCell: (data) => {
-          if (data.row.index === tableData2.length - 1) {
-            data.cell.styles.fontStyle = "bold";
-            data.cell.styles.fillColor = [254, 242, 242];
           }
         },
         margin: { left: 14, right: 14 },
@@ -1261,7 +1765,7 @@ export function EChecksheetInsApdForm() {
       }
 
       // Save PDF
-      const filename = `Summary_Inspeksi_APD_${selDate || "All"}_${Date.now()}.pdf`;
+      const filename = `Summary_Inspeksi_APD_${historyYear}_${historyMonthFilter || "All"}_${Date.now()}.pdf`;
       doc.save(filename);
     } catch (err) {
       console.error("Export PDF error:", err);
@@ -1283,7 +1787,7 @@ export function EChecksheetInsApdForm() {
           {/* ── HEADER ─────────────────────────────────────────────────────── */}
           <div className="apd-card" style={{ marginBottom: 14, overflow: "hidden" }}>
             <div style={{ background: "linear-gradient(135deg,#1e3a5f 0%,#1d4ed8 100%)", padding: "18px 22px" }}>
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
                   <div style={{
                     width: 40, height: 40, borderRadius: 10, background: "rgba(255,255,255,.15)",
@@ -1299,7 +1803,7 @@ export function EChecksheetInsApdForm() {
                   </div>
                 </div>
                 {/* Page tabs */}
-                <div style={{ display: "flex", gap: 6, flexShrink: 0 }}>
+                <div style={{ display: "flex", gap: 6, flexShrink: 0, flexWrap: "wrap" }}>
                   <button className={`tab-btn ${page === "inspection" ? "active" : "inactive"}`}
                     onClick={() => setPage("inspection")}
                     style={{ display: "flex", alignItems: "center", gap: 5 }}>
@@ -1307,8 +1811,13 @@ export function EChecksheetInsApdForm() {
                   </button>
                   <button className={`tab-btn ${page === "summary" ? "active" : "inactive"}`}
                     onClick={() => setPage("summary")}
-                    style={{ display: "flex", alignItems: "center", gap: 5, position: "relative" }}>
+                    style={{ display: "flex", alignItems: "center", gap: 5 }}>
                     <BarChart3 size={13} /> Summary
+                  </button>
+                  <button className={`tab-btn ${page === "edit" ? "active" : "inactive"}`}
+                    onClick={() => setPage("edit")}
+                    style={{ display: "flex", alignItems: "center", gap: 5, position: "relative" }}>
+                    <Edit3 size={13} /> Edit
                     {entries.length > 0 && (
                       <span style={{
                         position: "absolute", top: -6, right: -6, width: 16, height: 16,
@@ -1321,19 +1830,20 @@ export function EChecksheetInsApdForm() {
                   </button>
                 </div>
               </div>
-              {/* Stats */}
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8, marginTop: 12 }}>
+              {/* Stats Header */}
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 8, marginTop: 14 }}>
                 {[
-                  { label: "Departemen", val: DEPT_CONFIG.length },
-                  { label: "Tersimpan", val: entries.length },
-                  { label: "Overall", val: `${overallPct}%` },
+                  { label: "Departemen", val: dynamicDeptConfig.length },
+                  { label: "Sesi Tersimpan", val: entries.length },
+                  { label: "Temuan Problem", val: overallTotalProblemsYear },
+                  { label: "Overall % OK", val: `${overallPct}%` },
                 ].map(s => (
                   <div key={s.label} style={{
-                    background: "rgba(255,255,255,.1)", borderRadius: 8,
-                    padding: "8px 6px", textAlign: "center"
+                    background: "rgba(255,255,255,.1)", borderRadius: 9,
+                    padding: "9px 6px", textAlign: "center"
                   }}>
-                    <div style={{ fontSize: 18, fontWeight: 800, color: "#fff" }}>{s.val}</div>
-                    <div style={{ fontSize: 10, color: "rgba(255,255,255,.55)", marginTop: 1 }}>{s.label}</div>
+                    <div style={{ fontSize: 18, fontWeight: 800, color: "#fff", lineHeight: 1 }}>{s.val}</div>
+                    <div style={{ fontSize: 10, color: "rgba(255,255,255,.6)", marginTop: 3 }}>{s.label}</div>
                   </div>
                 ))}
               </div>
@@ -1346,81 +1856,412 @@ export function EChecksheetInsApdForm() {
           {page === "summary" && (
             <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
 
-              {/* Filter bulan — hanya memfilter Riwayat Inspeksi di bawah */}
-              <div className="apd-card" style={{ padding: "16px 20px" }}>
-                <div style={{
-                  display: "flex", alignItems: "center", justifyContent: "space-between",
-                  gap: 10, flexWrap: "wrap", marginBottom: 10
-                }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
-                    <Calendar size={13} color="#94a3b8" />
-                     <SectionTitle ch="Filter Bulan & Tindakan" />
-                  </div>
-                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                    <button
-                      onClick={loadEntries}
-                      disabled={loadingEntries}
-                      style={{
-                        display: "inline-flex", alignItems: "center", gap: 6,
-                        padding: "7px 13px", border: "1px solid #e2e8f0", borderRadius: 8,
-                        background: "#fff", color: "#475569", fontSize: 12, fontWeight: 600,
-                        cursor: loadingEntries ? "not-allowed" : "pointer", fontFamily: "inherit",
-                        transition: "all .15s"
-                      }}
-                      title="Muat ulang data dari database"
-                    >
-                      <RefreshCw size={13} className={loadingEntries ? "animate-spin" : ""} />
-                      {loadingEntries ? "Memuat..." : "Refresh"}
-                    </button>
-                    <button
-                      onClick={exportToPdf}
-                      disabled={isExportingPdf || entries.length === 0}
-                      style={{
-                        display: "inline-flex", alignItems: "center", gap: 6,
-                        padding: "7px 15px", border: "none", borderRadius: 8,
-                        background: entries.length > 0 ? "#2563eb" : "#e2e8f0",
-                        color: entries.length > 0 ? "#fff" : "#94a3b8",
-                        fontSize: 12, fontWeight: 700,
-                        cursor: entries.length > 0 && !isExportingPdf ? "pointer" : "not-allowed",
-                        boxShadow: entries.length > 0 ? "0 2px 6px rgba(37,99,235,.25)" : "none",
-                        fontFamily: "inherit", transition: "all .15s"
-                      }}
-                    >
-                      {isExportingPdf ? <Loader2 size={13} className="animate-spin" /> : <Download size={13} />}
-                      {isExportingPdf ? "Membuat PDF..." : "Download PDF"}
-                    </button>
-                  </div>
-                </div>
+              {/* ── TOOLBAR FILTER & TINDAKAN TERPADU (Satu Tempat, Tanpa Duplikasi) ── */}
+              <div className="apd-card" style={{ padding: "14px 20px" }}>
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
+                    {/* Filter Tahun */}
+                    <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                      <Calendar size={15} color="#1d4ed8" />
+                      <span style={{ fontSize: 13, fontWeight: 700, color: "#1e293b" }}>Tahun:</span>
+                      <select
+                        value={historyYear}
+                        onChange={e => setHistoryYear(+e.target.value)}
+                        style={{
+                          padding: "6px 12px", border: "1px solid #cbd5e1", borderRadius: 8,
+                          fontSize: 13, fontWeight: 700, color: "#1e293b", background: "#f8fafc",
+                          outline: "none", fontFamily: "inherit"
+                        }}
+                      >
+                        {[CURRENT_YEAR - 2, CURRENT_YEAR - 1, CURRENT_YEAR, CURRENT_YEAR + 1].map(y => (
+                          <option key={y} value={y}>{y}</option>
+                        ))}
+                      </select>
+                    </div>
 
-                <div style={{ display: "flex", alignItems: "flex-end", gap: 10, flexWrap: "wrap" }}>
-                  <div style={{ maxWidth: 280, flex: "1 1 200px" }}>
-                    <Lbl ch="Pilih Bulan (opsional)" />
-                    <input type="month" value={selDate}
-                      onChange={e => setSelDate(e.target.value)}
-                      max={new Date().toISOString().slice(0, 7)}
-                      className="apd-input-field" />
+                    {/* Filter Bulan */}
+                    <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                      <span style={{ fontSize: 12.5, fontWeight: 600, color: "#64748b" }}>Filter Bulan:</span>
+                      <select
+                        value={historyMonthFilter}
+                        onChange={e => setHistoryMonthFilter(e.target.value)}
+                        style={{
+                          padding: "6px 12px", border: "1px solid #cbd5e1", borderRadius: 8,
+                          fontSize: 13, fontWeight: 600, color: "#1e293b", background: "#fff",
+                          outline: "none", fontFamily: "inherit"
+                        }}
+                      >
+                        <option value="">— Semua Bulan —</option>
+                        {MONTH_NAMES_ID.map(m => (
+                          <option key={m} value={m}>{m}</option>
+                        ))}
+                      </select>
+                      {historyMonthFilter && (
+                        <button
+                          type="button"
+                          onClick={() => setHistoryMonthFilter("")}
+                          style={{
+                            padding: "5px 9px", border: "1px solid #e2e8f0", borderRadius: 6,
+                            background: "#f1f5f9", fontSize: 11, color: "#64748b", cursor: "pointer",
+                            display: "inline-flex", alignItems: "center", gap: 3
+                          }}
+                        >
+                          <X size={12} />
+                          Reset
+                        </button>
+                      )}
+                    </div>
                   </div>
-                  {selDate && (
-                    <button onClick={() => setSelDate("")}
-                      style={{
-                        padding: "8px 14px", border: "1px solid #e2e8f0", borderRadius: 8,
-                        background: "#fff", color: "#64748b", fontSize: 12, fontWeight: 600,
-                        cursor: "pointer", fontFamily: "inherit"
-                      }}>
-                      Reset Filter
-                    </button>
-                  )}
+
+                  {/* Actions & Metrics Indicator */}
+                  <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
+                    <div style={{
+                      display: "flex", alignItems: "center", gap: 10, fontSize: 12,
+                      background: "#f8fafc", padding: "6px 12px", borderRadius: 8, border: "1px solid #e2e8f0"
+                    }}>
+                      <span>MP: <b style={{ color: "#1e293b" }}>{totalMpActive}</b></span>
+                      <span>·</span>
+                      <span style={{ color: "#16a34a" }}>OK: <b>{totalOkActive}</b></span>
+                      <span>·</span>
+                      <span style={{ color: "#dc2626" }}>NOK: <b>{totalNokActive}</b></span>
+                    </div>
+
+                    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                      <button
+                        onClick={loadEntries}
+                        disabled={loadingEntries}
+                        style={{
+                          display: "inline-flex", alignItems: "center", gap: 6,
+                          padding: "7px 12px", border: "1px solid #cbd5e1", borderRadius: 8,
+                          background: "#fff", color: "#475569", fontSize: 12, fontWeight: 600,
+                          cursor: loadingEntries ? "not-allowed" : "pointer", fontFamily: "inherit",
+                          transition: "all .15s"
+                        }}
+                        title="Muat ulang data dari database"
+                      >
+                        <RefreshCw size={13} className={loadingEntries ? "animate-spin" : ""} />
+                        {loadingEntries ? "Memuat..." : "Refresh"}
+                      </button>
+                      <button
+                        onClick={exportToPdf}
+                        disabled={isExportingPdf || entries.length === 0}
+                        style={{
+                          display: "inline-flex", alignItems: "center", gap: 6,
+                          padding: "7px 14px", border: "none", borderRadius: 8,
+                          background: entries.length > 0 ? "#2563eb" : "#e2e8f0",
+                          color: entries.length > 0 ? "#fff" : "#94a3b8",
+                          fontSize: 12, fontWeight: 700,
+                          cursor: entries.length > 0 && !isExportingPdf ? "pointer" : "not-allowed",
+                          boxShadow: entries.length > 0 ? "0 2px 6px rgba(37,99,235,.25)" : "none",
+                          fontFamily: "inherit", transition: "all .15s"
+                        }}
+                      >
+                        {isExportingPdf ? <Loader2 size={13} className="animate-spin" /> : <Download size={13} />}
+                        {isExportingPdf ? "PDF..." : "Download PDF"}
+                      </button>
+                    </div>
+                  </div>
                 </div>
-                <p style={{ margin: "10px 0 0", fontSize: 11.5, color: "#94a3b8", lineHeight: 1.5 }}>
-                  Tanggal &amp; waktu data disimpan otomatis mengikuti waktu realtime saat inspeksi disimpan.
-                  Memilih bulan akan memfokuskan seluruh <b>Summary</b> (Ringkasan &amp; Bulanan) serta{" "}
-                  <b>Riwayat Inspeksi</b> di bawah ke bulan yang dipilih{
-                    selDate && <> — saat ini: <b style={{ color: "#2563eb" }}>{MONTHS[activeMonthIdx]}</b></>
-                  }.
-                </p>
               </div>
 
-              {/* 1. Summary Persentase */}
+              {/* ── GRAFIK & ANALISIS TEMUAN PROBLEM APD (DI ATAS TABEL SUMMARY) ── */}
+              <div className="apd-card" style={{ padding: "18px 20px" }}>
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14, flexWrap: "wrap", gap: 8 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                    <div style={{
+                      width: 34, height: 34, borderRadius: 9, background: "#fee2e2",
+                      border: "1px solid #fca5a5", display: "flex", alignItems: "center", justifyContent: "center"
+                    }}>
+                      <AlertCircle size={18} color="#dc2626" />
+                    </div>
+                    <div>
+                      <div style={{ fontSize: 14, fontWeight: 800, color: "#1e293b" }}>
+                        Grafik &amp; Analisis Temuan Problem APD ({historyYear})
+                      </div>
+                      <div style={{ fontSize: 11.5, color: "#94a3b8" }}>
+                        Distribusi abnormalitas APD bulanan berdasarkan kategori temuan
+                      </div>
+                    </div>
+                  </div>
+                  <div style={{
+                    padding: "4px 12px", borderRadius: 999,
+                    background: overallTotalProblemsYear > 0 ? "#fee2e2" : "#dcfce7",
+                    color: overallTotalProblemsYear > 0 ? "#dc2626" : "#16a34a",
+                    fontWeight: 700, fontSize: 11.5, border: "1px solid"
+                  }}>
+                    {overallTotalProblemsYear > 0 ? `${overallTotalProblemsYear} Total Temuan (${historyYear})` : "0 Temuan (Semua Sesuai)"}
+                  </div>
+                </div>
+
+                {/* Ringkasan Cards Kategori Temuan APD */}
+                <div style={{
+                  display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(170px, 1fr))",
+                  gap: 10, marginBottom: 18
+                }}>
+                  {APD_PROBLEM_CATEGORIES.map(cat => {
+                    const cnt = historyMonthFilter
+                      ? (problemCounts[cat.label] || 0)
+                      : (monthlyProblemRows.find(r => r.key === cat.key)?.totalYear || 0);
+                    return (
+                      <div key={cat.key} style={{
+                        padding: "10px 12px", borderRadius: 10, border: "1px solid #e2e8f0",
+                        background: cnt > 0 ? "#fff5f5" : "#f8fafc",
+                        borderLeft: `4px solid ${cat.color}`,
+                        transition: "all .15s"
+                      }}>
+                        <div style={{ fontSize: 11, fontWeight: 700, color: "#475569", lineHeight: 1.25 }}>
+                          {cat.label}
+                        </div>
+                        <div style={{ display: "flex", alignItems: "baseline", gap: 6, marginTop: 4 }}>
+                          <span style={{ fontSize: 18, fontWeight: 800, color: cnt > 0 ? cat.color : "#94a3b8" }}>
+                            {cnt}
+                          </span>
+                          <span style={{ fontSize: 10, color: "#94a3b8" }}>kasus</span>
+                        </div>
+                        <div style={{ fontSize: 9.5, color: "#94a3b8", marginTop: 2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={cat.desc}>
+                          {cat.desc}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {/* Visual Grafik SVG Bulanan Vertikal */}
+                {(() => {
+                  const chartH = 220;
+                  const paddingL = 42;
+                  const paddingB = 38;
+                  const paddingT = 18;
+                  const plotH = chartH - paddingB - paddingT;
+                  const monthSlotW = 76;
+                  const numCat = APD_PROBLEM_CATEGORIES.length;
+                  const barGroupW = 60;
+                  const barW = barGroupW / numCat;
+                  const totalSVGW = paddingL + MONTHS.length * monthSlotW + 16;
+
+                  const allVals = monthlyProblemRows.flatMap(r => r.perMonth);
+                  const maxVal = Math.max(...allVals, 4);
+                  const gridCount = 4;
+                  const gridLines = Array.from({ length: gridCount + 1 }, (_, i) => Math.round((maxVal / gridCount) * i));
+
+                  return (
+                    <div style={{
+                      border: "1px solid #e2e8f0", borderRadius: 12, padding: "14px 14px 10px",
+                      background: "#fafbfc"
+                    }}>
+                      <div style={{ fontSize: 12, fontWeight: 700, color: "#334155", marginBottom: 8, display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 6 }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                          <span>Tren Bar Chart Bulanan Temuan APD</span>
+                          {historyMonthFilter && (
+                            <span style={{ fontSize: 11, fontWeight: 600, color: "#2563eb", background: "#eff6ff", padding: "1px 8px", borderRadius: 6 }}>
+                              Bulan aktif: {historyMonthFilter}
+                            </span>
+                          )}
+                        </div>
+                        <span style={{ fontSize: 11, color: "#94a3b8" }}>Hover batang untuk melihat detail</span>
+                      </div>
+
+                      <div style={{ overflowX: "auto", WebkitOverflowScrolling: "touch" }}>
+                        <svg width={totalSVGW} height={chartH} style={{ display: "block", minWidth: totalSVGW }}>
+                          {/* Grid lines horizontal */}
+                          {gridLines.map((gl, i) => {
+                            const y = paddingT + plotH - (gl / maxVal) * plotH;
+                            return (
+                              <g key={i}>
+                                <line x1={paddingL} y1={y} x2={totalSVGW - 10} y2={y}
+                                  stroke={i === 0 ? "#cbd5e1" : "#e2e8f0"} strokeWidth={i === 0 ? 1.5 : 1}
+                                  strokeDasharray={i === 0 ? "none" : "3 3"} />
+                                <text x={paddingL - 6} y={y + 3.5} textAnchor="end" fontSize={9} fill="#94a3b8" fontWeight="600">{gl}</text>
+                              </g>
+                            );
+                          })}
+
+                          {/* Bars per bulan per kategori */}
+                          {MONTHS.map((mShort, mIdx) => {
+                            const mFullName = MONTH_NAMES_ID[mIdx];
+                            const isSelectedMonth = historyMonthFilter === mFullName;
+                            const groupX = paddingL + mIdx * monthSlotW + (monthSlotW - barGroupW) / 2;
+
+                            return (
+                              <g key={mIdx}>
+                                {/* Highlight kolom bulan terpilih */}
+                                {isSelectedMonth && (
+                                  <rect
+                                    x={paddingL + mIdx * monthSlotW}
+                                    y={paddingT}
+                                    width={monthSlotW}
+                                    height={plotH}
+                                    fill="#eff6ff"
+                                    opacity={0.65}
+                                    rx={4}
+                                  />
+                                )}
+
+                                {APD_PROBLEM_CATEGORIES.map((cat, ci) => {
+                                  const row = monthlyProblemRows[ci];
+                                  const val = row ? row.perMonth[mIdx] : 0;
+                                  const bh = (val / maxVal) * plotH;
+                                  const bx = groupX + ci * barW;
+                                  const by = paddingT + plotH - bh;
+
+                                  return val > 0 ? (
+                                    <g key={ci}>
+                                      <rect
+                                        x={bx}
+                                        y={by}
+                                        width={Math.max(barW - 1, 2)}
+                                        height={bh}
+                                        fill={cat.color}
+                                        opacity={0.9}
+                                        rx={2}
+                                      >
+                                        <title>{`${cat.label} (${mFullName}): ${val} kasus`}</title>
+                                      </rect>
+                                      {bh > 13 && (
+                                        <text
+                                          x={bx + (barW - 1) / 2}
+                                          y={by + 9.5}
+                                          textAnchor="middle"
+                                          fontSize={7.5}
+                                          fill="#fff"
+                                          fontWeight="800"
+                                        >
+                                          {val}
+                                        </text>
+                                      )}
+                                    </g>
+                                  ) : null;
+                                })}
+
+                                {/* Nama Bulan Label */}
+                                <text
+                                  x={paddingL + mIdx * monthSlotW + monthSlotW / 2}
+                                  y={chartH - 8}
+                                  textAnchor="middle"
+                                  fontSize={10}
+                                  fill={isSelectedMonth ? "#1d4ed8" : "#475569"}
+                                  fontWeight={isSelectedMonth ? "800" : "600"}
+                                >
+                                  {mShort}
+                                </text>
+
+                                {/* Total per bulan jika > 0 */}
+                                {monthlyTotalProblems[mIdx] > 0 && (
+                                  <text
+                                    x={paddingL + mIdx * monthSlotW + monthSlotW / 2}
+                                    y={chartH - 22}
+                                    textAnchor="middle"
+                                    fontSize={8.5}
+                                    fill="#dc2626"
+                                    fontWeight="700"
+                                  >
+                                    ∑{monthlyTotalProblems[mIdx]}
+                                  </text>
+                                )}
+                              </g>
+                            );
+                          })}
+                        </svg>
+                      </div>
+
+                      {/* Legend Kategori */}
+                      <div style={{
+                        display: "flex", flexWrap: "wrap", gap: "6px 14px",
+                        paddingTop: 10, marginTop: 8, borderTop: "1px solid #f1f5f9"
+                      }}>
+                        {APD_PROBLEM_CATEGORIES.map(cat => {
+                          const yrTotal = monthlyProblemRows.find(r => r.key === cat.key)?.totalYear || 0;
+                          return (
+                            <div key={cat.key} style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 11 }}>
+                              <span style={{ width: 10, height: 10, borderRadius: 2, background: cat.color }} />
+                              <span style={{ color: "#475569", fontWeight: 500 }}>{cat.label}</span>
+                              <span style={{ fontWeight: 700, color: yrTotal > 0 ? cat.color : "#94a3b8" }}>
+                                ({yrTotal})
+                              </span>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  );
+                })()}
+
+                {/* Tabel Matriks Rekap Bulanan Temuan */}
+                <div style={{ marginTop: 14, overflowX: "auto" }}>
+                  <table className="sum-table" style={{ fontSize: 12 }}>
+                    <thead>
+                      <tr>
+                        <th style={{ width: 36, textAlign: "center" }}>No</th>
+                        <th style={{ minWidth: 180 }}>Kategori Problem Temuan APD</th>
+                        {MONTHS.map((m, idx) => (
+                          <th key={m} style={{
+                            textAlign: "center", minWidth: 42,
+                            background: historyMonthFilter === MONTH_NAMES_ID[idx] ? "#dbeafe" : undefined,
+                            color: historyMonthFilter === MONTH_NAMES_ID[idx] ? "#1d4ed8" : undefined
+                          }}>
+                            {m}
+                          </th>
+                        ))}
+                        <th style={{ textAlign: "center", minWidth: 60 }}>Total</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {monthlyProblemRows.map((row, idx) => (
+                        <tr key={row.key}>
+                          <td style={{ textAlign: "center", color: "#94a3b8" }}>{idx + 1}</td>
+                          <td style={{ fontWeight: 600 }}>
+                            <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
+                              <span style={{ width: 8, height: 8, borderRadius: 2, background: row.color, flexShrink: 0 }} />
+                              <span>{row.label}</span>
+                            </div>
+                          </td>
+                          {MONTHS.map((m, mIdx) => {
+                            const val = row.perMonth[mIdx];
+                            const isSelected = historyMonthFilter === MONTH_NAMES_ID[mIdx];
+                            return (
+                              <td key={m} style={{
+                                textAlign: "center",
+                                fontWeight: val > 0 ? 700 : 400,
+                                color: val > 0 ? row.color : "#cbd5e1",
+                                background: isSelected ? "#eff6ff" : undefined
+                              }}>
+                                {val > 0 ? val : "-"}
+                              </td>
+                            );
+                          })}
+                          <td style={{
+                            textAlign: "center", fontWeight: 800,
+                            color: row.totalYear > 0 ? row.color : "#94a3b8"
+                          }}>
+                            {row.totalYear > 0 ? row.totalYear : "-"}
+                          </td>
+                        </tr>
+                      ))}
+                      <tr style={{ fontWeight: 800, background: "#f8fafc" }}>
+                        <td colSpan={2} style={{ textAlign: "right", color: "#1e293b" }}>TOTAL TEMUAN</td>
+                        {MONTHS.map((m, mIdx) => {
+                          const tot = monthlyTotalProblems[mIdx];
+                          const isSelected = historyMonthFilter === MONTH_NAMES_ID[mIdx];
+                          return (
+                            <td key={m} style={{
+                              textAlign: "center",
+                              color: tot > 0 ? "#dc2626" : "#94a3b8",
+                              background: isSelected ? "#dbeafe" : undefined
+                            }}>
+                              {tot > 0 ? tot : "-"}
+                            </td>
+                          );
+                        })}
+                        <td style={{ textAlign: "center", color: overallTotalProblemsYear > 0 ? "#dc2626" : "#16a34a" }}>
+                          {overallTotalProblemsYear}
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              {/* ── TABEL SUMMARY PERSENTASE PENGECEKAN APD PER PROSES ── */}
               <div className="apd-card" style={{ overflow: "hidden" }}>
                 <div style={{
                   padding: "13px 20px", borderBottom: "1px solid #f1f5f9",
@@ -1429,7 +2270,7 @@ export function EChecksheetInsApdForm() {
                   <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                     <TrendingUp size={15} color="#2563eb" />
                     <span style={{ fontSize: 14, fontWeight: 700, color: "#1e293b" }}>
-                      1. Summary Prosentase Pengecekan APD
+                      Ringkasan Prosentase Pengecekan APD per Proses
                     </span>
                   </div>
                   <div style={{ display: "flex", gap: 6 }}>
@@ -1444,7 +2285,7 @@ export function EChecksheetInsApdForm() {
                   </div>
                 </div>
 
-                {/* ── Tab: Ringkasan (tampilan asli) ─────────────────────── */}
+                {/* ── Tab: Ringkasan ─────────────────────────────────────────── */}
                 {summaryTab === "ringkasan" && (
                   <div style={{ overflowX: "auto", padding: "10px 0" }}>
                     <table className="sum-table">
@@ -1497,7 +2338,7 @@ export function EChecksheetInsApdForm() {
                   </div>
                 )}
 
-                {/* ── Tab: Bulanan (persentase OK per bulan, spt Excel) ──── */}
+                {/* ── Tab: Bulanan ───────────────────────────────────────────── */}
                 {summaryTab === "bulanan" && (
                   <>
                     <div style={{ overflowX: "auto", padding: "10px 0" }}>
@@ -1508,7 +2349,7 @@ export function EChecksheetInsApdForm() {
                             <th style={{ textAlign: "left" }} rowSpan={2}>Dept</th>
                             <th style={{ textAlign: "left" }} rowSpan={2}>Proses</th>
                             <th style={{ textAlign: "center" }} colSpan={monthIndexesShown.length}>
-                              PROSENTASE OK
+                              PROSENTASE OK ({historyYear})
                             </th>
                           </tr>
                           <tr>
@@ -1582,345 +2423,42 @@ export function EChecksheetInsApdForm() {
                 )}
               </div>
 
-              {/* 2. Summary Problem */}
-              <div className="apd-card" style={{ overflow: "hidden" }}>
-                <div style={{
-                  padding: "13px 20px", borderBottom: "1px solid #f1f5f9",
-                  display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, flexWrap: "wrap"
-                }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                    <AlertCircle size={15} color="#e11d48" />
-                    <span style={{ fontSize: 14, fontWeight: 700, color: "#1e293b" }}>
-                      2. Summary Problem / Temuan Abnormal
-                    </span>
-                  </div>
-                  <div style={{ display: "flex", gap: 6 }}>
-                    <button className={`tab-btn ${problemTab === "ringkasan" ? "active" : "inactive"}`}
-                      onClick={() => setProblemTab("ringkasan")}>
-                      Ringkasan
-                    </button>
-                    <button className={`tab-btn ${problemTab === "bulanan" ? "active" : "inactive"}`}
-                      onClick={() => setProblemTab("bulanan")}>
-                      Bulanan
-                    </button>
-                  </div>
-                </div>
-
-                {/* ── Tab Problem: Ringkasan ─────────────────────────────────── */}
-                {problemTab === "ringkasan" && (
-                  <div style={{ overflowX: "auto", padding: "10px 0" }}>
-                    <table className="sum-table">
-                      <thead>
-                        <tr>
-                          <th style={{ textAlign: "left" }}>No</th>
-                          <th style={{ textAlign: "left" }}>Problem / Temuan Abnormal</th>
-                          <th style={{ textAlign: "center" }}>Jumlah</th>
-                          <th style={{ textAlign: "center" }}>%</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {FINDING_OPTIONS.map((cat, i) => {
-                          const cnt = problemCounts[cat] || 0;
-                          const pct = totalProblems ? Math.round((cnt / totalProblems) * 100) : 0;
-                          return (
-                            <tr key={cat}>
-                              <td style={{ color: "#94a3b8", textAlign: "center" }}>{i + 1}</td>
-                              <td>{cat}</td>
-                              <td style={{
-                                textAlign: "center", fontWeight: 700,
-                                color: cnt > 0 ? "#dc2626" : "#94a3b8"
-                              }}>{cnt || "-"}</td>
-                              <td style={{ textAlign: "center", color: "#64748b" }}>{cnt > 0 ? `${pct}%` : "-"}</td>
-                            </tr>
-                          );
-                        })}
-                        <tr>
-                          <td colSpan={2} style={{ fontWeight: 700, textAlign: "right", color: "#1e293b" }}>
-                            Total Temuan
-                          </td>
-                          <td style={{
-                            textAlign: "center", fontWeight: 800, fontSize: 15,
-                            color: totalProblems > 0 ? "#dc2626" : "#94a3b8"
-                          }}>
-                            {totalProblems || "-"}
-                          </td>
-                          <td style={{ textAlign: "center", fontWeight: 700, color: "#64748b" }}>
-                            {totalProblems > 0 ? "100%" : "-"}
-                          </td>
-                        </tr>
-                      </tbody>
-                    </table>
-                  </div>
-                )}
-
-                {/* ── Tab Problem: Bulanan ───────────────────────────────────── */}
-                {problemTab === "bulanan" && (
-                  <div style={{ overflowX: "auto", padding: "10px 0" }}>
-                    <table className="sum-table">
-                      <thead>
-                        <tr>
-                          <th style={{ textAlign: "left" }} rowSpan={2}>No</th>
-                          <th style={{ textAlign: "left" }} rowSpan={2}>Problem / Temuan Abnormal</th>
-                          <th style={{ textAlign: "center" }} colSpan={monthIndexesShown.length}>
-                            JUMLAH TEMUAN BULANAN
-                          </th>
-                          <th style={{ textAlign: "center" }} rowSpan={2}>Total</th>
-                        </tr>
-                        <tr>
-                          {monthIndexesShown.map(mIdx => (
-                            <th key={mIdx} style={{
-                              textAlign: "center", minWidth: 54,
-                              background: mIdx === activeMonthIdx ? "#fee2e2" : undefined
-                            }}>
-                              {MONTHS[mIdx]}
-                            </th>
-                          ))}
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {monthlyProblemRows.map((r, i) => (
-                          <tr key={i}>
-                            <td style={{ color: "#94a3b8", textAlign: "center" }}>{i + 1}</td>
-                            <td style={{ fontWeight: 500 }}>{r.category}</td>
-                            {monthIndexesShown.map(mIdx => {
-                              const cnt = r.perMonth[mIdx];
-                              return (
-                                <td key={mIdx} style={{
-                                  textAlign: "center",
-                                  fontWeight: cnt > 0 ? 700 : 400,
-                                  color: cnt > 0 ? "#dc2626" : "#94a3b8",
-                                  background: mIdx === activeMonthIdx ? "#fff1f2" : undefined
-                                }}>
-                                  {cnt || "-"}
-                                </td>
-                              );
-                            })}
-                            <td style={{
-                              textAlign: "center", fontWeight: 800,
-                              color: r.totalYear > 0 ? "#dc2626" : "#94a3b8"
-                            }}>
-                              {r.totalYear || "-"}
-                            </td>
-                          </tr>
-                        ))}
-                        <tr style={{ fontWeight: 700 }}>
-                          <td colSpan={2} style={{ textAlign: "right", color: "#1e293b" }}>TOTAL TEMUAN</td>
-                          {monthIndexesShown.map(mIdx => (
-                            <td key={mIdx} style={{
-                              textAlign: "center", fontWeight: 800,
-                              color: monthlyTotalProblems[mIdx] > 0 ? "#dc2626" : "#94a3b8",
-                              background: mIdx === activeMonthIdx ? "#fee2e2" : undefined
-                            }}>
-                              {monthlyTotalProblems[mIdx] || "-"}
-                            </td>
-                          ))}
-                          <td style={{ textAlign: "center", fontWeight: 800, fontSize: 14, color: "#dc2626" }}>
-                            {overallTotalProblemsYear || "-"}
-                          </td>
-                        </tr>
-                      </tbody>
-                    </table>
-                  </div>
-                )}
-              </div>
-
-              {/* 3. Grafik */}
-              <div className="apd-card" style={{ padding: "16px 20px" }}>
-                <div style={{
-                  display: "flex", alignItems: "center", justifyContent: "space-between",
-                  gap: 8, marginBottom: 16, flexWrap: "wrap"
-                }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                    <BarChart3 size={15} color="#2563eb" />
-                    <span style={{ fontSize: 14, fontWeight: 700, color: "#1e293b" }}>
-                      3. Grafik Problem / Temuan Abnormal {problemTab === "bulanan" ? "(Tren Bulanan)" : "(Distribusi Kategori)"}
-                    </span>
-                  </div>
-                  <div style={{ display: "flex", gap: 6 }}>
-                    <button className={`tab-btn ${problemTab === "ringkasan" ? "active" : "inactive"}`}
-                      onClick={() => setProblemTab("ringkasan")}>
-                      Ringkasan
-                    </button>
-                    <button className={`tab-btn ${problemTab === "bulanan" ? "active" : "inactive"}`}
-                      onClick={() => setProblemTab("bulanan")}>
-                      Bulanan
-                    </button>
-                  </div>
-                </div>
-
-                {/* ── Grafik: Ringkasan ──────────────────────────────────────── */}
-                {problemTab === "ringkasan" && (
-                  totalProblems === 0 ? (
-                    <div style={{ textAlign: "center", padding: "24px 0", color: "#94a3b8", fontSize: 13 }}>
-                      Belum ada data temuan.
-                    </div>
-                  ) : (
-                    <div className="chart-wrap">
-                      {FINDING_OPTIONS.map((cat, ci) => {
-                        const val = problemCounts[cat] || 0;
-                        const pct = totalProblems ? Math.round((val / totalProblems) * 100) : 0;
-                        const barColors = ["#ef4444", "#f97316", "#eab308", "#84cc16", "#06b6d4", "#6366f1", "#a855f7"];
-                        return (
-                          <div key={cat} className="chart-row">
-                            <span className="chart-lbl">{cat}</span>
-                            <div className="chart-track">
-                              <div className="chart-fill"
-                                style={{
-                                  width: `${pct}%`, background: barColors[ci % barColors.length],
-                                  minWidth: val > 0 ? 36 : 0
-                                }}>
-                                {val > 0 && <span>{val} ({pct}%)</span>}
-                              </div>
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  )
-                )}
-
-                {/* ── Grafik: Bulanan ────────────────────────────────────────── */}
-                {problemTab === "bulanan" && (() => {
-                  // Warna kontras selang-seling antar kategori
-                  const CAT_COLORS = ["#ef4444","#2563eb","#f97316","#7c3aed","#eab308","#059669","#db2777"];
-                  const allMonthsArr = MONTHS.map((_, i) => i);
-                  const chartH = 210;
-                  const paddingL = 44; const paddingB = 40; const paddingT = 18;
-                  const plotH = chartH - paddingB - paddingT;
-                  const monthSlotW = 90;
-                  const numCat = FINDING_OPTIONS.length;
-                  const barGroupW = 70;
-                  const barW = barGroupW / numCat;
-                  const totalSVGW = paddingL + allMonthsArr.length * monthSlotW + 8;
-                  const allVals = monthlyProblemRows.flatMap(r => r.perMonth);
-                  const maxVal = Math.max(...allVals, 1);
-                  const gridCount = 5;
-                  const gridLines = Array.from({ length: gridCount + 1 }, (_, i) => Math.round((maxVal / gridCount) * i));
-
-                  const linePaths = FINDING_OPTIONS.map((cat, ci) => {
-                    const row = monthlyProblemRows[ci];
-                    const pts = allMonthsArr.map(mIdx => {
-                      const val = row ? (row.perMonth[mIdx] || 0) : 0;
-                      const groupX = paddingL + mIdx * monthSlotW + (monthSlotW - barGroupW) / 2;
-                      const bx = groupX + ci * barW + barW / 2;
-                      const bh = (val / maxVal) * plotH;
-                      return { x: bx, y: paddingT + plotH - bh, val };
-                    });
-                    const segs: string[] = [];
-                    let drawing = false;
-                    pts.forEach(p => {
-                      if (p.val > 0) { segs.push(drawing ? `L ${p.x} ${p.y}` : `M ${p.x} ${p.y}`); drawing = true; }
-                      else drawing = false;
-                    });
-                    return { path: segs.join(" "), color: CAT_COLORS[ci % CAT_COLORS.length], pts };
-                  });
-
-                  if (overallTotalProblemsYear === 0) {
-                    return <div style={{ textAlign: "center", padding: "24px 0", color: "#94a3b8", fontSize: 13 }}>Belum ada data temuan bulanan.</div>;
-                  }
-                  return (
-                    <>
-                      <div style={{ overflowX: "auto", WebkitOverflowScrolling: "touch", marginBottom: 4 }}>
-                        <svg width={totalSVGW} height={chartH} style={{ display: "block", minWidth: totalSVGW }}>
-                          {/* Grid lines + Y labels */}
-                          {gridLines.map((gl, i) => {
-                            const y = paddingT + plotH - (gl / maxVal) * plotH;
-                            return (
-                              <g key={i}>
-                                <line x1={paddingL} y1={y} x2={totalSVGW - 4} y2={y}
-                                  stroke={i === 0 ? "#cbd5e1" : "#f1f5f9"} strokeWidth={i === 0 ? 1.5 : 1} />
-                                <text x={paddingL - 5} y={y + 4} textAnchor="end" fontSize={9} fill="#94a3b8">{gl}</text>
-                              </g>
-                            );
-                          })}
-                          {/* Bars per month per category */}
-                          {allMonthsArr.map(mIdx => {
-                            const groupX = paddingL + mIdx * monthSlotW + (monthSlotW - barGroupW) / 2;
-                            return (
-                              <g key={mIdx}>
-                                {FINDING_OPTIONS.map((cat, ci) => {
-                                  const row = monthlyProblemRows[ci];
-                                  const val = row ? (row.perMonth[mIdx] || 0) : 0;
-                                  const bh = (val / maxVal) * plotH;
-                                  const bx = groupX + ci * barW;
-                                  const by = paddingT + plotH - bh;
-                                  const color = CAT_COLORS[ci % CAT_COLORS.length];
-                                  return val > 0 ? (
-                                    <g key={ci}>
-                                      <rect x={bx} y={by} width={Math.max(barW - 1.5, 1)} height={bh}
-                                        fill={color} opacity={0.82} rx={2} />
-                                      {bh > 14 && (
-                                        <text x={bx + (barW - 1.5) / 2} y={by + 10}
-                                          textAnchor="middle" fontSize={8} fill="#fff" fontWeight="700">{val}</text>
-                                      )}
-                                    </g>
-                                  ) : null;
-                                })}
-                                <text x={paddingL + mIdx * monthSlotW + monthSlotW / 2} y={chartH - 6}
-                                  textAnchor="middle" fontSize={10} fill="#475569" fontWeight="600">
-                                  {MONTHS[mIdx]}
-                                </text>
-                              </g>
-                            );
-                          })}
-                          {/* Line charts per category */}
-                          {linePaths.map((lp, ci) => lp.path ? (
-                            <g key={ci}>
-                              <path d={lp.path} fill="none" stroke={lp.color}
-                                strokeWidth={2} strokeDasharray="5 3" opacity={0.7} />
-                              {lp.pts.filter(p => p.val > 0).map((p, pi) => (
-                                <circle key={pi} cx={p.x} cy={p.y} r={4}
-                                  fill={lp.color} stroke="#fff" strokeWidth={1.5} />
-                              ))}
-                            </g>
-                          ) : null)}
-                          {/* Y axis label */}
-                          <text x={11} y={paddingT + plotH / 2} textAnchor="middle" fontSize={9} fill="#94a3b8"
-                            transform={`rotate(-90, 11, ${paddingT + plotH / 2})`}>Jumlah</text>
-                        </svg>
-                      </div>
-                      {/* Legend */}
-                      <div style={{ display: "flex", flexWrap: "wrap", gap: "5px 14px", padding: "8px 2px 2px" }}>
-                        {FINDING_OPTIONS.map((cat, ci) => {
-                          const totalYr = monthlyProblemRows[ci]?.totalYear || 0;
-                          return (
-                            <div key={ci} style={{ display: "flex", alignItems: "center", gap: 5 }}>
-                              <div style={{ width: 11, height: 11, borderRadius: 2, flexShrink: 0, background: CAT_COLORS[ci % CAT_COLORS.length] }} />
-                              <span style={{ fontSize: 11, color: "#475569", maxWidth: 180, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={cat}>{cat}</span>
-                              <span style={{ fontSize: 11, fontWeight: 700, color: totalYr > 0 ? CAT_COLORS[ci % CAT_COLORS.length] : "#94a3b8", marginLeft: 2 }}>({totalYr})</span>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    </>
-                  );
-                })()}
-              </div>
-
-              {/* 4. Riwayat */}
+              {/* ── PREVIEW 5 SESI TERBARU (ringkas) ── */}
               {entries.length > 0 && (
                 <div className="apd-card" style={{ overflow: "hidden" }}>
                   <div style={{
                     padding: "13px 20px", borderBottom: "1px solid #f1f5f9",
-                    display: "flex", alignItems: "center", gap: 8
+                    display: "flex", alignItems: "center", justifyContent: "space-between",
+                    gap: 12, flexWrap: "wrap"
                   }}>
-                    <Users size={15} color="#2563eb" />
-                    <span style={{ fontSize: 14, fontWeight: 700, color: "#1e293b" }}>
-                      4. Riwayat Inspeksi
-                    </span>
-                    <span style={{
-                      marginLeft: "auto", fontSize: 11, fontWeight: 700,
-                      background: "#eff6ff", color: "#2563eb", padding: "2px 9px", borderRadius: 999
-                    }}>
-                      {filteredEntries.length}{selDate ? ` / ${entries.length}` : ""}
-                    </span>
-                  </div>
-                  {filteredEntries.length === 0 && (
-                    <div style={{ padding: "22px 20px", textAlign: "center", color: "#94a3b8", fontSize: 13 }}>
-                       Tidak ada data pada bulan yang dipilih.
+                    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                      <ClipboardList size={16} color="#2563eb" />
+                      <span style={{ fontSize: 14, fontWeight: 700, color: "#1e293b" }}>
+                        Sesi Inspeksi Terbaru
+                      </span>
+                      <span style={{
+                        fontSize: 11, fontWeight: 700,
+                        background: "#eff6ff", color: "#2563eb", padding: "2px 9px", borderRadius: 999
+                      }}>
+                        {entries.length} Total Sesi
+                      </span>
                     </div>
-                  )}
-                  {[...filteredEntries].reverse().map((e, i) => {
+                    <button
+                      type="button"
+                      onClick={() => { setPage("edit"); setEditPageTab("riwayat"); }}
+                      style={{
+                        display: "inline-flex", alignItems: "center", gap: 6,
+                        padding: "6px 14px", border: "1px solid #bfdbfe", borderRadius: 8,
+                        background: "#eff6ff", color: "#1d4ed8", fontSize: 12, fontWeight: 700,
+                        cursor: "pointer", fontFamily: "inherit"
+                      }}
+                    >
+                      <Edit3 size={12} /> Lihat Semua &amp; Edit →
+                    </button>
+                  </div>
+
+                  {/* Preview 5 sesi terbaru */}
+                  {[...entries].reverse().slice(0, 5).map((e, i, arr) => {
                     const p = entryAvgPct(e);
                     const mp = e.rows.reduce((a, r) => a + r.jumlahMP, 0);
                     const ok = e.rows.reduce((a, r) => a + r.okCount, 0);
@@ -1928,34 +2466,744 @@ export function EChecksheetInsApdForm() {
                     return (
                       <div key={e.id} style={{
                         display: "flex", alignItems: "center", gap: 12,
-                        padding: "11px 20px", borderBottom: i < filteredEntries.length - 1 ? "1px solid #f8fafc" : "none"
+                        padding: "12px 20px", borderBottom: i < arr.length - 1 ? "1px solid #f8fafc" : "none",
+                        flexWrap: "wrap"
                       }}>
                         <PctPill v={p} />
-                        <div style={{ flex: 1, minWidth: 0 }}>
-                          <div style={{
-                            fontSize: 13, fontWeight: 600, color: "#1e293b",
-                            overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap"
-                          }}>
-                            {e.prosesName} · {e.subName}
+                        <div style={{ flex: 1, minWidth: 180 }}>
+                          <div style={{ fontSize: 13, fontWeight: 700, color: "#1e293b" }}>
+                            {resolveLabel("proses", e.prosesKey, e.prosesName)} · {e.subName}
                           </div>
-                          <div style={{ fontSize: 11, color: "#94a3b8", marginTop: 1 }}>
-                            {e.deptName} ·&nbsp;
-                            <span style={{ color: "#16a34a" }}>{ok} OK</span>&nbsp;·&nbsp;
-                            <span style={{ color: "#dc2626" }}>{nok} NOK</span>&nbsp;/&nbsp;{mp} MP
+                          <div style={{ fontSize: 11.5, color: "#94a3b8", marginTop: 2 }}>
+                            {resolveLabel("dept", e.deptKey, e.deptName)} ·&nbsp;
+                            <span style={{ color: "#16a34a", fontWeight: 600 }}>{ok} OK</span>&nbsp;·&nbsp;
+                            <span style={{ color: "#dc2626", fontWeight: 600 }}>{nok} NOK</span>&nbsp;/&nbsp;{mp} MP
                           </div>
                         </div>
-                        <div style={{ fontSize: 11, color: "#94a3b8", textAlign: "right", flexShrink: 0 }}>
+                        <div style={{ fontSize: 11, color: "#94a3b8", flexShrink: 0 }}>
                           {new Date(e.date).toLocaleDateString("id-ID", { day: "numeric", month: "short", year: "numeric" })}
-                          <br />
-                          {new Date(e.date).toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" })}
                         </div>
+                        <button
+                          type="button"
+                          onClick={() => setViewingEntry(e)}
+                          className="act-btn act-btn-detail"
+                          style={{ padding: "4px 10px", fontSize: 11 }}
+                        >
+                          <Eye size={11} /> Detail
+                        </button>
                       </div>
                     );
                   })}
+
+                  {entries.length > 5 && (
+                    <div style={{
+                      padding: "10px 20px", textAlign: "center",
+                      borderTop: "1px solid #f1f5f9", background: "#f8fafc"
+                    }}>
+                      <button
+                        type="button"
+                        onClick={() => { setPage("edit"); setEditPageTab("riwayat"); }}
+                        style={{
+                          display: "inline-flex", alignItems: "center", gap: 6,
+                          padding: "7px 18px", border: "1px solid #bfdbfe", borderRadius: 8,
+                          background: "#eff6ff", color: "#1d4ed8", fontSize: 12.5, fontWeight: 700,
+                          cursor: "pointer", fontFamily: "inherit"
+                        }}
+                      >
+                        <Edit3 size={13} /> Lihat {entries.length - 5} sesi lainnya di tab Edit →
+                      </button>
+                    </div>
+                  )}
                 </div>
               )}
             </div>
           )}
+
+          {/* ══════════════════════════════════════════════════════════════════
+              EDIT PAGE: Riwayat Inspeksi + Manajemen Master Data
+          ══════════════════════════════════════════════════════════════════ */}
+          {page === "edit" && (
+            <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+
+              {/* ── Sub-Tab Navigation ── */}
+              <div className="apd-card" style={{ padding: "14px 20px" }}>
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
+                  <div style={{ display: "flex", gap: 8 }}>
+                    <button
+                      className={`tab-btn ${editPageTab === "riwayat" ? "active" : "inactive"}`}
+                      onClick={() => setEditPageTab("riwayat")}
+                      style={{ display: "flex", alignItems: "center", gap: 6 }}
+                    >
+                      <ClipboardList size={13} /> Riwayat Inspeksi
+                      {entries.length > 0 && (
+                        <span style={{
+                          background: editPageTab === "riwayat" ? "rgba(255,255,255,0.3)" : "#e2e8f0",
+                          color: editPageTab === "riwayat" ? "#fff" : "#64748b",
+                          fontSize: 10, fontWeight: 700, borderRadius: 999, padding: "1px 6px"
+                        }}>{entries.length}</span>
+                      )}
+                    </button>
+                    <button
+                      className={`tab-btn ${editPageTab === "master-data" ? "active" : "inactive"}`}
+                      onClick={() => setEditPageTab("master-data")}
+                      style={{ display: "flex", alignItems: "center", gap: 6 }}
+                    >
+                      <Settings size={13} /> Manajemen Master Data
+                    </button>
+                  </div>
+                  {editPageTab === "riwayat" && (
+                    <button
+                      onClick={loadEntries}
+                      disabled={loadingEntries}
+                      style={{
+                        display: "inline-flex", alignItems: "center", gap: 6,
+                        padding: "6px 12px", border: "1px solid #cbd5e1", borderRadius: 8,
+                        background: "#fff", color: "#475569", fontSize: 12, fontWeight: 600,
+                        cursor: loadingEntries ? "not-allowed" : "pointer", fontFamily: "inherit"
+                      }}
+                    >
+                      <RefreshCw size={13} />
+                      {loadingEntries ? "Memuat..." : "Refresh"}
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {/* ── Sub-Tab: Riwayat Inspeksi ── */}
+              {editPageTab === "riwayat" && (
+                <>
+                  {/* Filter bar */}
+                  <div className="apd-card" style={{ padding: "12px 20px" }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+                      <div style={{ position: "relative", flex: 1, minWidth: 200 }}>
+                        <Search size={14} color="#94a3b8" style={{ position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)" }} />
+                        <input
+                          type="text"
+                          value={historySearch}
+                          onChange={e => setHistorySearch(e.target.value)}
+                          placeholder="Cari Dept, proses, sub, NIK, PIC, area..."
+                          style={{
+                            width: "100%", padding: "7px 12px 7px 32px", border: "1px solid #cbd5e1",
+                            borderRadius: 8, fontSize: 12.5, outline: "none", background: "#f8fafc",
+                            fontFamily: "inherit", boxSizing: "border-box"
+                          }}
+                        />
+                        {historySearch && (
+                          <button type="button" onClick={() => setHistorySearch("")}
+                            style={{ position: "absolute", right: 8, top: "50%", transform: "translateY(-50%)",
+                              border: "none", background: "none", cursor: "pointer", color: "#94a3b8" }}>
+                            <X size={13} />
+                          </button>
+                        )}
+                      </div>
+                      <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                        <span style={{ fontSize: 12, fontWeight: 600, color: "#64748b" }}>Dept:</span>
+                        <select value={historyDeptFilter} onChange={e => setHistoryDeptFilter(e.target.value)}
+                          style={{ padding: "6px 10px", border: "1px solid #cbd5e1", borderRadius: 7,
+                            fontSize: 12, color: "#1e293b", background: "#fff", outline: "none" }}>
+                          <option value="">Semua</option>
+                          {dynamicDeptConfig.map(d => (
+                            <option key={d.deptKey} value={d.deptKey}>{resolveLabel("dept", d.deptKey, d.deptName)}</option>
+                          ))}
+                        </select>
+                      </div>
+                      <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                        <span style={{ fontSize: 12, fontWeight: 600, color: "#64748b" }}>Tahun:</span>
+                        <select value={localHistoryYear} onChange={e => setLocalHistoryYear(+e.target.value)}
+                          style={{ padding: "6px 10px", border: "1px solid #cbd5e1", borderRadius: 7,
+                            fontSize: 12, color: "#1e293b", background: "#fff", outline: "none" }}>
+                          {[CURRENT_YEAR - 2, CURRENT_YEAR - 1, CURRENT_YEAR, CURRENT_YEAR + 1].map(y => (
+                            <option key={y} value={y}>{y}</option>
+                          ))}
+                        </select>
+                      </div>
+                      <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                        <span style={{ fontSize: 12, fontWeight: 600, color: "#64748b" }}>Bulan:</span>
+                        <select value={localHistoryMonth} onChange={e => setLocalHistoryMonth(e.target.value)}
+                          style={{ padding: "6px 10px", border: "1px solid #cbd5e1", borderRadius: 7,
+                            fontSize: 12, color: "#1e293b", background: "#fff", outline: "none" }}>
+                          <option value="">Semua</option>
+                          {MONTH_NAMES_ID.map(m => (
+                            <option key={m} value={m}>{m}</option>
+                          ))}
+                        </select>
+                      </div>
+                      {(historySearch || historyDeptFilter || localHistoryMonth || localHistoryYear !== CURRENT_YEAR) && (
+                        <button type="button"
+                          onClick={() => { setHistorySearch(""); setHistoryDeptFilter(""); setLocalHistoryMonth(""); setLocalHistoryYear(CURRENT_YEAR); }}
+                          style={{ padding: "5px 10px", border: "1px solid #e2e8f0", borderRadius: 6,
+                            background: "#fff", fontSize: 11, color: "#ef4444", cursor: "pointer", fontWeight: 600 }}>
+                          Reset Filter
+                        </button>
+                      )}
+                    </div>
+                  </div>
+
+                  {filteredEntries.length === 0 ? (
+                    <div className="apd-card" style={{ padding: "32px", textAlign: "center", color: "#94a3b8", fontSize: 13 }}>
+                      Tidak ada sesi inspeksi yang sesuai filter.
+                    </div>
+                  ) : (
+                    <div className="apd-card" style={{ overflow: "hidden" }}>
+                      <div style={{ padding: "11px 20px", borderBottom: "1px solid #f1f5f9",
+                        display: "flex", alignItems: "center", gap: 8 }}>
+                        <ClipboardList size={15} color="#2563eb" />
+                        <span style={{ fontSize: 13.5, fontWeight: 700, color: "#1e293b" }}>
+                          {filteredEntries.length} Sesi Ditemukan
+                        </span>
+                        {filteredEntries.length < entries.length && (
+                          <span style={{ fontSize: 11, color: "#94a3b8" }}>dari {entries.length} total</span>
+                        )}
+                      </div>
+
+                      {[...filteredEntries].reverse().map((e, i) => {
+                        const p = entryAvgPct(e);
+                        const mp = e.rows.reduce((a, r) => a + r.jumlahMP, 0);
+                        const ok = e.rows.reduce((a, r) => a + r.okCount, 0);
+                        const nok = e.rows.reduce((a, r) => a + r.nokCount, 0);
+                        return (
+                          <div key={e.id} style={{
+                            display: "flex", alignItems: "center", gap: 12,
+                            padding: "13px 20px",
+                            borderBottom: i < filteredEntries.length - 1 ? "1px solid #f8fafc" : "none",
+                            flexWrap: "wrap"
+                          }}>
+                            <PctPill v={p} />
+                            <div style={{ flex: 1, minWidth: 200 }}>
+                              <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                                <span style={{ fontSize: 13.5, fontWeight: 700, color: "#1e293b" }}>
+                                  {resolveLabel("proses", e.prosesKey, e.prosesName)} · {e.subName}
+                                </span>
+                                {nok > 0 ? (
+                                  <span style={{ display: "inline-flex", alignItems: "center", gap: 3,
+                                    padding: "2px 7px", borderRadius: 999,
+                                    background: "#fee2e2", color: "#dc2626", fontSize: 10.5, fontWeight: 700 }}>
+                                    ⚠ {nok} NOK
+                                  </span>
+                                ) : (
+                                  <span style={{ display: "inline-flex", alignItems: "center", gap: 3,
+                                    padding: "2px 7px", borderRadius: 999,
+                                    background: "#dcfce7", color: "#15803d", fontSize: 10.5, fontWeight: 700 }}>
+                                    ✓ 100% OK
+                                  </span>
+                                )}
+                                {e.isEdited && (
+                                  <span style={{ display: "inline-flex", alignItems: "center", gap: 4,
+                                    padding: "2px 8px", borderRadius: 999,
+                                    background: "#fef3c7", border: "1px solid #fde68a",
+                                    color: "#b45309", fontSize: 10.5, fontWeight: 700 }}>
+                                    <Edit3 size={10} /> Diedit
+                                  </span>
+                                )}
+                              </div>
+                              <div style={{ fontSize: 11.5, color: "#94a3b8", marginTop: 3 }}>
+                                {resolveLabel("dept", e.deptKey, e.deptName)} ·&nbsp;
+                                <span style={{ color: "#16a34a", fontWeight: 600 }}>{ok} OK</span>&nbsp;·&nbsp;
+                                <span style={{ color: "#dc2626", fontWeight: 600 }}>{nok} NOK</span>&nbsp;/&nbsp;{mp} MP
+                                {e.inspectorName && <> · <span style={{ color: "#475569" }}>{e.inspectorName}</span></>}
+                              </div>
+                            </div>
+                            <div style={{ fontSize: 11, textAlign: "right", flexShrink: 0, display: "flex", flexDirection: "column", gap: 2 }}>
+                              <span style={{ color: "#475569", fontWeight: 600 }}>
+                                {new Date(e.date).toLocaleDateString("id-ID", { day: "numeric", month: "short", year: "numeric" })}
+                              </span>
+                              <span style={{ color: "#94a3b8" }}>
+                                {new Date(e.date).toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" })}
+                              </span>
+                              {e.isEdited && e.updatedAt && (
+                                <span style={{ color: "#d97706", fontSize: 10 }}>Edit: {new Date(e.updatedAt).toLocaleDateString("id-ID", { day: "numeric", month: "short" })}</span>
+                              )}
+                            </div>
+                            <div style={{ display: "flex", alignItems: "center", gap: 6, flexShrink: 0 }}>
+                              <button type="button" onClick={() => setViewingEntry(e)}
+                                className="act-btn act-btn-detail" title="Detail">
+                                <Eye size={12} /> Detail
+                              </button>
+                              <button type="button" onClick={() => handleOpenEdit(e)}
+                                className="act-btn act-btn-edit" title="Edit">
+                                <Edit3 size={12} /> Edit
+                              </button>
+                              <button type="button" onClick={() => { setDeletingEntry(e); setDeleteError(""); }}
+                                className="act-btn act-btn-del" title="Hapus">
+                                <Trash2 size={12} />
+                              </button>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </>
+              )}
+
+              {/* ── Sub-Tab: Manajemen Master Data ── */}
+              {editPageTab === "master-data" && (
+                <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+
+                  {/* Info banner */}
+                  <div className="apd-card" style={{ padding: "14px 20px", display: "flex", alignItems: "flex-start", gap: 12 }}>
+                    <div style={{ width: 38, height: 38, borderRadius: 10, background: "#eff6ff",
+                      border: "1px solid #bfdbfe", display: "flex", alignItems: "center",
+                      justifyContent: "center", flexShrink: 0 }}>
+                      <Tag size={18} color="#2563eb" />
+                    </div>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontSize: 14, fontWeight: 700, color: "#1e293b" }}>Manajemen Nama Master Data</div>
+                      <div style={{ fontSize: 12.5, color: "#64748b", marginTop: 3, lineHeight: 1.5 }}>
+                        Ubah nama tampilan <b>Departemen</b>, <b>Proses</b>, dan <b>Area</b> sesuai kondisi aktual di pabrik.
+                        Perubahan disimpan ke database dan berlaku untuk semua pengguna.
+                        Klik ikon <RotateCcw size={11} style={{ verticalAlign: "middle" }} /> Reset untuk kembali ke nama default.
+                      </div>
+                    </div>
+                    <button onClick={loadMasterLabels} disabled={loadingLabels}
+                      style={{ display: "inline-flex", alignItems: "center", gap: 5,
+                        padding: "6px 12px", border: "1px solid #e2e8f0", borderRadius: 8,
+                        background: "#fff", color: "#475569", fontSize: 11.5, fontWeight: 600,
+                        cursor: loadingLabels ? "not-allowed" : "pointer", fontFamily: "inherit", flexShrink: 0 }}>
+                      <RefreshCw size={12} />
+                      {loadingLabels ? "Memuat..." : "Refresh"}
+                    </button>
+                  </div>
+
+                  {/* Section A: Nama Departemen */}
+                  <div className="apd-card" style={{ overflow: "hidden" }}>
+                    <div style={{ padding: "13px 20px", borderBottom: "1px solid #f1f5f9",
+                      display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, flexWrap: "wrap" }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                        <Factory size={15} color="#7c3aed" />
+                        <span style={{ fontSize: 14, fontWeight: 700, color: "#1e293b" }}>Nama Departemen</span>
+                        <span style={{ fontSize: 11, background: "#f3e8ff", color: "#7c3aed", padding: "1px 8px", borderRadius: 999, fontWeight: 700 }}>
+                          {dynamicDeptConfig.length}
+                        </span>
+                      </div>
+                      <button
+                        onClick={() => { setShowAddDeptModal(true); setAddMasterError(""); }}
+                        style={{ display: "inline-flex", alignItems: "center", gap: 5,
+                          padding: "6px 12px", border: "none", borderRadius: 8,
+                          background: "#7c3aed", color: "#fff", fontSize: 12, fontWeight: 700,
+                          cursor: "pointer", fontFamily: "inherit", boxShadow: "0 2px 6px rgba(124,58,237,.25)" }}>
+                        <Plus size={13} /> Tambah Departemen
+                      </button>
+                    </div>
+                    <div style={{ padding: "16px 20px", display: "flex", flexDirection: "column", gap: 10 }}>
+                      {dynamicDeptConfig.map(dept => {
+                        const currentName = resolveLabel("dept", dept.deptKey, dept.deptName);
+                        const isCustom = !!masterLabels.dept[dept.deptKey];
+                        const isEditing = renameDeptKey === dept.deptKey;
+                        const isDeleting = deletingMasterKey === dept.deptKey;
+                        return (
+                          <div key={dept.deptKey} style={{ display: "flex", alignItems: "center", gap: 12,
+                            padding: "10px 14px", border: `1.5px solid ${isCustom ? "#bfdbfe" : "#e2e8f0"}`,
+                            borderRadius: 10, background: isCustom ? "#f8fbff" : "#fafafa" }}>
+                            <div style={{ flex: 1, minWidth: 0 }}>
+                              <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                                <span style={{ fontSize: 11, fontWeight: 700, color: "#94a3b8",
+                                  background: "#f1f5f9", padding: "1px 7px", borderRadius: 4 }}>
+                                  {dept.deptKey}
+                                </span>
+                                {isEditing ? (
+                                  <input autoFocus type="text" value={renameDeptVal}
+                                    onChange={e => setRenameDeptVal(e.target.value)}
+                                    onKeyDown={e => {
+                                      if (e.key === "Enter") saveMasterLabel("dept", dept.deptKey, renameDeptVal);
+                                      if (e.key === "Escape") setRenameDeptKey(null);
+                                    }}
+                                    placeholder={dept.deptName}
+                                    style={{ flex: 1, padding: "5px 10px", border: "1.5px solid #3b82f6",
+                                      borderRadius: 7, fontSize: 13, fontWeight: 600, outline: "none",
+                                      fontFamily: "inherit", minWidth: 140 }} />
+                                ) : (
+                                  <span style={{ fontSize: 14, fontWeight: 700, color: isCustom ? "#1d4ed8" : "#1e293b" }}>
+                                    {currentName}
+                                  </span>
+                                )}
+                                {isCustom && !isEditing && (
+                                  <span style={{ fontSize: 10, background: "#dbeafe", color: "#1d4ed8",
+                                    padding: "1px 7px", borderRadius: 999, fontWeight: 600 }}>Custom</span>
+                                )}
+                              </div>
+                              {isCustom && (
+                                <div style={{ fontSize: 11, color: "#94a3b8", marginTop: 3 }}>Default: {dept.deptName}</div>
+                              )}
+                            </div>
+                            <div style={{ display: "flex", gap: 6, flexShrink: 0 }}>
+                              {isEditing ? (
+                                <>
+                                  <button onClick={() => saveMasterLabel("dept", dept.deptKey, renameDeptVal)}
+                                    disabled={savingLabel === dept.deptKey}
+                                    style={{ display: "inline-flex", alignItems: "center", gap: 5,
+                                      padding: "5px 12px", border: "none", borderRadius: 7,
+                                      background: "#2563eb", color: "#fff", fontSize: 12, fontWeight: 700,
+                                      cursor: "pointer", fontFamily: "inherit" }}>
+                                    <Save size={12} />{savingLabel === dept.deptKey ? "Menyimpan..." : "Simpan"}
+                                  </button>
+                                  <button onClick={() => setRenameDeptKey(null)}
+                                    style={{ padding: "5px 10px", border: "1px solid #e2e8f0", borderRadius: 7,
+                                      background: "#fff", color: "#475569", fontSize: 12, fontWeight: 600,
+                                      cursor: "pointer", fontFamily: "inherit" }}>Batal</button>
+                                </>
+                              ) : (
+                                <>
+                                  <button onClick={() => { setRenameDeptKey(dept.deptKey); setRenameDeptVal(currentName); }}
+                                    className="act-btn act-btn-edit" style={{ padding: "5px 10px" }} title="Ubah Nama">
+                                    <Edit3 size={12} /> Ubah
+                                  </button>
+                                  {isCustom && (
+                                    <button onClick={() => saveMasterLabel("dept", dept.deptKey, "")}
+                                      style={{ display: "inline-flex", alignItems: "center", gap: 4,
+                                        padding: "5px 9px", border: "1px solid #e2e8f0", borderRadius: 7,
+                                        background: "#f8fafc", color: "#94a3b8", fontSize: 12,
+                                        cursor: "pointer", fontFamily: "inherit" }} title="Reset ke Default">
+                                      <RotateCcw size={11} /> Reset
+                                    </button>
+                                  )}
+                                  <button
+                                    onClick={() => handleDeleteMasterItem("dept", dept.deptKey, currentName)}
+                                    disabled={isDeleting}
+                                    className="act-btn act-btn-del"
+                                    style={{ padding: "5px 9px" }}
+                                    title="Hapus Departemen"
+                                  >
+                                    <Trash2 size={12} /> {isDeleting ? "..." : "Hapus"}
+                                  </button>
+                                </>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Section B: Nama Proses */}
+                  <div className="apd-card" style={{ overflow: "hidden" }}>
+                    <div style={{ padding: "13px 20px", borderBottom: "1px solid #f1f5f9",
+                      display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, flexWrap: "wrap" }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                        <BarChart3 size={15} color="#059669" />
+                        <span style={{ fontSize: 14, fontWeight: 700, color: "#1e293b" }}>Nama Proses</span>
+                      </div>
+                      <button
+                        onClick={() => {
+                          setNewProsesDeptKey(dynamicDeptConfig[0]?.deptKey || "");
+                          setShowAddProsesModal(true);
+                          setAddMasterError("");
+                        }}
+                        style={{ display: "inline-flex", alignItems: "center", gap: 5,
+                          padding: "6px 12px", border: "none", borderRadius: 8,
+                          background: "#059669", color: "#fff", fontSize: 12, fontWeight: 700,
+                          cursor: "pointer", fontFamily: "inherit", boxShadow: "0 2px 6px rgba(5,150,105,.25)" }}>
+                        <Plus size={13} /> Tambah Proses
+                      </button>
+                    </div>
+                    <div style={{ padding: "16px 20px", display: "flex", flexDirection: "column", gap: 10 }}>
+                      {dynamicDeptConfig.flatMap(dept =>
+                        dept.proses.map(proc => {
+                          const currentName = resolveLabel("proses", proc.key, proc.name);
+                          const isCustom = !!masterLabels.proses[proc.key];
+                          const isEditing = renameProsesKey === proc.key;
+                          const isDeleting = deletingMasterKey === proc.key;
+                          const a = ac(dept.deptKey);
+                          return (
+                            <div key={proc.key} style={{ display: "flex", alignItems: "center", gap: 12,
+                              padding: "10px 14px", border: `1.5px solid ${isCustom ? "#bbf7d0" : "#e2e8f0"}`,
+                              borderRadius: 10, background: isCustom ? "#f0fdf4" : "#fafafa" }}>
+                              <div style={{ flex: 1, minWidth: 0 }}>
+                                <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                                  <Chip label={resolveLabel("dept", dept.deptKey, dept.deptName)} a={a} />
+                                  {isEditing ? (
+                                    <input autoFocus type="text" value={renameProsesVal}
+                                      onChange={e => setRenameProsesVal(e.target.value)}
+                                      onKeyDown={e => {
+                                        if (e.key === "Enter") saveMasterLabel("proses", proc.key, renameProsesVal);
+                                        if (e.key === "Escape") setRenameProsesKey(null);
+                                      }}
+                                      placeholder={proc.name}
+                                      style={{ flex: 1, padding: "5px 10px", border: "1.5px solid #3b82f6",
+                                        borderRadius: 7, fontSize: 13, fontWeight: 600, outline: "none",
+                                        fontFamily: "inherit", minWidth: 160 }} />
+                                  ) : (
+                                    <span style={{ fontSize: 14, fontWeight: 700, color: isCustom ? "#15803d" : "#1e293b" }}>
+                                      {currentName}
+                                    </span>
+                                  )}
+                                  {isCustom && !isEditing && (
+                                    <span style={{ fontSize: 10, background: "#dcfce7", color: "#15803d",
+                                      padding: "1px 7px", borderRadius: 999, fontWeight: 600 }}>Custom</span>
+                                )}
+                                </div>
+                                {isCustom && (
+                                  <div style={{ fontSize: 11, color: "#94a3b8", marginTop: 3 }}>Default: {proc.name}</div>
+                                )}
+                              </div>
+                              <div style={{ display: "flex", gap: 6, flexShrink: 0 }}>
+                                {isEditing ? (
+                                  <>
+                                    <button onClick={() => saveMasterLabel("proses", proc.key, renameProsesVal)}
+                                      disabled={savingLabel === proc.key}
+                                      style={{ display: "inline-flex", alignItems: "center", gap: 5,
+                                        padding: "5px 12px", border: "none", borderRadius: 7,
+                                        background: "#2563eb", color: "#fff", fontSize: 12, fontWeight: 700,
+                                        cursor: "pointer", fontFamily: "inherit" }}>
+                                      <Save size={12} />{savingLabel === proc.key ? "Menyimpan..." : "Simpan"}
+                                    </button>
+                                    <button onClick={() => setRenameProsesKey(null)}
+                                      style={{ padding: "5px 10px", border: "1px solid #e2e8f0", borderRadius: 7,
+                                        background: "#fff", color: "#475569", fontSize: 12, fontWeight: 600,
+                                        cursor: "pointer", fontFamily: "inherit" }}>Batal</button>
+                                  </>
+                                ) : (
+                                  <>
+                                    <button onClick={() => { setRenameProsesKey(proc.key); setRenameProsesVal(currentName); }}
+                                      className="act-btn act-btn-edit" style={{ padding: "5px 10px" }} title="Ubah Nama">
+                                      <Edit3 size={12} /> Ubah
+                                    </button>
+                                    {isCustom && (
+                                      <button onClick={() => saveMasterLabel("proses", proc.key, "")}
+                                        style={{ display: "inline-flex", alignItems: "center", gap: 4,
+                                          padding: "5px 9px", border: "1px solid #e2e8f0", borderRadius: 7,
+                                          background: "#f8fafc", color: "#94a3b8", fontSize: 12,
+                                          cursor: "pointer", fontFamily: "inherit" }} title="Reset ke Default">
+                                        <RotateCcw size={11} /> Reset
+                                      </button>
+                                    )}
+                                    <button
+                                      onClick={() => handleDeleteMasterItem("proses", proc.key, currentName)}
+                                      disabled={isDeleting}
+                                      className="act-btn act-btn-del"
+                                      style={{ padding: "5px 9px" }}
+                                      title="Hapus Proses"
+                                    >
+                                      <Trash2 size={12} /> {isDeleting ? "..." : "Hapus"}
+                                    </button>
+                                  </>
+                                )}
+                              </div>
+                            </div>
+                          );
+                        })
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Section C: Sub-Proses & Area */}
+                  <div className="apd-card" style={{ overflow: "hidden" }}>
+                    <div style={{ padding: "13px 20px", borderBottom: "1px solid #f1f5f9",
+                      display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, flexWrap: "wrap" }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                        <MapPin size={15} color="#d97706" />
+                        <span style={{ fontSize: 14, fontWeight: 700, color: "#1e293b" }}>Manajemen Sub-Proses & Area</span>
+                      </div>
+                      <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                        {masterAreaProses && (
+                          <button
+                            onClick={() => {
+                              setNewSubProsesKey(masterAreaProses);
+                              setShowAddSubModal(true);
+                              setAddMasterError("");
+                            }}
+                            style={{ display: "inline-flex", alignItems: "center", gap: 5,
+                              padding: "6px 12px", border: "none", borderRadius: 8,
+                              background: "#0284c7", color: "#fff", fontSize: 12, fontWeight: 700,
+                              cursor: "pointer", fontFamily: "inherit", boxShadow: "0 2px 6px rgba(2,132,199,.25)" }}>
+                            <Plus size={13} /> Tambah Sub-Proses
+                          </button>
+                        )}
+                        {masterAreaProses && masterAreaSub && (
+                          <button
+                            onClick={() => {
+                              setNewAreaProsesKey(masterAreaProses);
+                              setNewAreaSubName(masterAreaSub);
+                              setShowAddAreaModal(true);
+                              setAddMasterError("");
+                            }}
+                            style={{ display: "inline-flex", alignItems: "center", gap: 5,
+                              padding: "6px 12px", border: "none", borderRadius: 8,
+                              background: "#d97706", color: "#fff", fontSize: 12, fontWeight: 700,
+                              cursor: "pointer", fontFamily: "inherit", boxShadow: "0 2px 6px rgba(217,119,6,.25)" }}>
+                            <Plus size={13} /> Tambah Area
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                    <div style={{ padding: "16px 20px" }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap", marginBottom: 16 }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                          <span style={{ fontSize: 12, fontWeight: 600, color: "#64748b" }}>Pilih Proses:</span>
+                          <select value={masterAreaProses} onChange={e => { setMasterAreaProses(e.target.value); setMasterAreaSub(""); }}
+                            style={{ padding: "6px 12px", border: "1px solid #cbd5e1", borderRadius: 8,
+                              fontSize: 13, color: "#1e293b", background: "#fff", outline: "none", fontFamily: "inherit" }}>
+                            <option value="">— Pilih Proses —</option>
+                            {dynamicDeptConfig.flatMap(dept =>
+                              dept.proses.map(proc => (
+                                <option key={proc.key} value={proc.key}>
+                                  {resolveLabel("dept", dept.deptKey, dept.deptName)} › {resolveLabel("proses", proc.key, proc.name)}
+                                </option>
+                              ))
+                            )}
+                          </select>
+                        </div>
+                        {masterAreaProses && (() => {
+                          const proc = dynamicDeptConfig.flatMap(d => d.proses).find(p => p.key === masterAreaProses);
+                          if (!proc) return null;
+                          return (
+                            <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                              <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                                <span style={{ fontSize: 12, fontWeight: 600, color: "#64748b" }}>Pilih Sub-Proses:</span>
+                                <select value={masterAreaSub} onChange={e => setMasterAreaSub(e.target.value)}
+                                  style={{ padding: "6px 12px", border: "1px solid #cbd5e1", borderRadius: 8,
+                                    fontSize: 13, color: "#1e293b", background: "#fff", outline: "none", fontFamily: "inherit" }}>
+                                  <option value="">— Pilih Sub-Proses —</option>
+                                  {proc.subs.map(s => (
+                                    <option key={s.name} value={s.name}>{s.name} ({s.areas.length} Area)</option>
+                                  ))}
+                                </select>
+                              </div>
+                              {masterAreaSub && (
+                                <button
+                                  onClick={() => handleDeleteMasterItem("sub", `${proc.key}::${masterAreaSub}`, masterAreaSub)}
+                                  disabled={deletingMasterKey === `${proc.key}::${masterAreaSub}`}
+                                  className="act-btn act-btn-del"
+                                  style={{ padding: "5px 10px" }}
+                                  title="Hapus Sub-Proses Ini"
+                                >
+                                  <Trash2 size={12} /> Hapus Sub-Proses
+                                </button>
+                              )}
+                            </div>
+                          );
+                        })()}
+                      </div>
+
+                      {masterAreaProses && masterAreaSub && (() => {
+                        const proc = dynamicDeptConfig.flatMap(d => d.proses).find(p => p.key === masterAreaProses);
+                        const sub = proc?.subs.find(s => s.name === masterAreaSub);
+                        if (!sub) return null;
+                        if (sub.areas.length === 0) {
+                          return (
+                            <div style={{ textAlign: "center", padding: "20px 0", color: "#94a3b8", fontSize: 13 }}>
+                              Sub-proses "{sub.name}" belum memiliki area terdefinisi.
+                              <div style={{ marginTop: 8 }}>
+                                <button
+                                  onClick={() => {
+                                    setNewAreaProsesKey(masterAreaProses);
+                                    setNewAreaSubName(masterAreaSub);
+                                    setShowAddAreaModal(true);
+                                    setAddMasterError("");
+                                  }}
+                                  style={{ display: "inline-flex", alignItems: "center", gap: 5,
+                                    padding: "6px 12px", border: "none", borderRadius: 7,
+                                    background: "#d97706", color: "#fff", fontSize: 12, fontWeight: 700,
+                                    cursor: "pointer", fontFamily: "inherit" }}>
+                                  <Plus size={12} /> Tambah Area Pertama
+                                </button>
+                              </div>
+                            </div>
+                          );
+                        }
+                        return (
+                          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                            {sub.areas.map(originalArea => {
+                              const compositeKey = `${masterAreaProses}::${masterAreaSub}::${originalArea}`;
+                              const currentName = resolveLabel("area", compositeKey, originalArea);
+                              const isCustom = !!masterLabels.area[compositeKey];
+                              const isEditing = renameAreaKey === compositeKey;
+                              return (
+                                <div key={compositeKey} style={{ display: "flex", alignItems: "center", gap: 12,
+                                  padding: "9px 14px", border: `1.5px solid ${isCustom ? "#fde68a" : "#e2e8f0"}`,
+                                  borderRadius: 9, background: isCustom ? "#fffbeb" : "#fafafa" }}>
+                                  <MapPin size={13} color={isCustom ? "#d97706" : "#94a3b8"} style={{ flexShrink: 0 }} />
+                                  <div style={{ flex: 1, minWidth: 0 }}>
+                                    {isEditing ? (
+                                      <input autoFocus type="text" value={renameAreaVal}
+                                        onChange={e => setRenameAreaVal(e.target.value)}
+                                        onKeyDown={e => {
+                                          if (e.key === "Enter") saveMasterLabel("area", compositeKey, renameAreaVal);
+                                          if (e.key === "Escape") setRenameAreaKey(null);
+                                        }}
+                                        placeholder={originalArea}
+                                        style={{ width: "100%", padding: "5px 10px", border: "1.5px solid #3b82f6",
+                                          borderRadius: 7, fontSize: 13, fontWeight: 600, outline: "none",
+                                          fontFamily: "inherit", boxSizing: "border-box" }} />
+                                    ) : (
+                                      <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                                        <span style={{ fontSize: 13.5, fontWeight: 700, color: isCustom ? "#b45309" : "#1e293b" }}>
+                                          {currentName}
+                                        </span>
+                                        {isCustom && (
+                                          <>
+                                            <span style={{ fontSize: 10, background: "#fef3c7", color: "#b45309",
+                                              padding: "1px 7px", borderRadius: 999, fontWeight: 600 }}>Custom</span>
+                                            <span style={{ fontSize: 11, color: "#94a3b8" }}>← Default: {originalArea}</span>
+                                          </>
+                                        )}
+                                      </div>
+                                    )}
+                                  </div>
+                                  <div style={{ display: "flex", gap: 6, flexShrink: 0 }}>
+                                    {isEditing ? (
+                                      <>
+                                        <button onClick={() => saveMasterLabel("area", compositeKey, renameAreaVal)}
+                                          disabled={savingLabel === compositeKey}
+                                          style={{ display: "inline-flex", alignItems: "center", gap: 5,
+                                            padding: "5px 12px", border: "none", borderRadius: 7,
+                                            background: "#2563eb", color: "#fff", fontSize: 12, fontWeight: 700,
+                                            cursor: "pointer", fontFamily: "inherit" }}>
+                                          <Save size={12} />{savingLabel === compositeKey ? "Menyimpan..." : "Simpan"}
+                                        </button>
+                                        <button onClick={() => setRenameAreaKey(null)}
+                                          style={{ padding: "5px 10px", border: "1px solid #e2e8f0", borderRadius: 7,
+                                            background: "#fff", color: "#475569", fontSize: 12, fontWeight: 600,
+                                            cursor: "pointer", fontFamily: "inherit" }}>Batal</button>
+                                      </>
+                                    ) : (
+                                      <>
+                                        <button onClick={() => { setRenameAreaKey(compositeKey); setRenameAreaVal(currentName); }}
+                                          className="act-btn act-btn-edit" style={{ padding: "5px 10px" }} title="Ubah Nama">
+                                          <Edit3 size={12} /> Ubah
+                                        </button>
+                                        {isCustom && (
+                                          <button onClick={() => saveMasterLabel("area", compositeKey, "")}
+                                            style={{ display: "inline-flex", alignItems: "center", gap: 4,
+                                              padding: "5px 9px", border: "1px solid #e2e8f0", borderRadius: 7,
+                                              background: "#f8fafc", color: "#94a3b8", fontSize: 12,
+                                              cursor: "pointer", fontFamily: "inherit" }} title="Reset ke Default">
+                                            <RotateCcw size={11} /> Reset
+                                          </button>
+                                        )}
+                                        <button
+                                          onClick={() => handleDeleteMasterItem("area", compositeKey, currentName)}
+                                          disabled={deletingMasterKey === compositeKey}
+                                          className="act-btn act-btn-del"
+                                          style={{ padding: "5px 9px" }}
+                                          title="Hapus Area"
+                                        >
+                                          <Trash2 size={12} /> {deletingMasterKey === compositeKey ? "..." : "Hapus"}
+                                        </button>
+                                      </>
+                                    )}
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        );
+                      })()}
+
+                      {(!masterAreaProses || !masterAreaSub) && (
+                        <div style={{ textAlign: "center", color: "#94a3b8", fontSize: 13, padding: "24px 0" }}>
+                          Pilih Proses dan Sub-Proses di atas untuk mengelola daftar Area (tambah, ubah nama, atau hapus).
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                </div>
+              )}
+            </div>
+          )}
+
+
 
           {/* ══════════════════════════════════════════════════════════════════
               INSPECTION WIZARD
@@ -1971,10 +3219,11 @@ export function EChecksheetInsApdForm() {
                     Pilih departemen yang akan diinspeksi.
                   </p>
                   <div className="dept-grid">
-                    {DEPT_CONFIG.map(dept => {
+                    {dynamicDeptConfig.map(dept => {
                       const a = ac(dept.deptKey);
                       const rel = entries.filter(e => e.deptKey === dept.deptKey);
                       const pct = rel.length ? Math.round(rel.map(entryAvgPct).reduce((a, b) => a + b) / rel.length) : 0;
+                      const resolvedDeptName = resolveLabel("dept", dept.deptKey, dept.deptName);
                       return (
                         <button key={dept.deptKey} className="apd-btn-row"
                           style={{ padding: "14px", justifyContent: "space-between" }}
@@ -1986,7 +3235,7 @@ export function EChecksheetInsApdForm() {
                                 fontSize: 13, fontWeight: 700, color: "#1e293b",
                                 overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap"
                               }}>
-                                {dept.deptName}
+                                {resolvedDeptName}
                               </span>
                             </div>
                             <div style={{ fontSize: 11, color: "#94a3b8", marginBottom: 7 }}>
@@ -2008,11 +3257,12 @@ export function EChecksheetInsApdForm() {
               {/* ── Step 1: Pilih Proses ───────────────────────────────────── */}
               {step === 1 && selDept && (() => {
                 const a = ac(selDept.deptKey);
+                const resolvedDeptName = resolveLabel("dept", selDept.deptKey, selDept.deptName);
                 return (
                   <div>
                     <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 16 }}>
                       <BackBtn onClick={goBack} />
-                      <Chip label={selDept.deptName} a={a} />
+                      <Chip label={resolvedDeptName} a={a} />
                     </div>
                     <p style={{ fontSize: 13, color: "#64748b", margin: "0 0 14px" }}>
                       Pilih proses yang akan diinspeksi.
@@ -2021,6 +3271,7 @@ export function EChecksheetInsApdForm() {
                       {selDept.proses.map(proc => {
                         const rel = entries.filter(e => e.prosesKey === proc.key);
                         const pct = rel.length ? Math.round(rel.map(entryAvgPct).reduce((a, b) => a + b) / rel.length) : 0;
+                        const resolvedProcName = resolveLabel("proses", proc.key, proc.name);
                         return (
                           <button key={proc.key} className="apd-btn-row"
                             style={{ gap: 12, padding: "12px 14px" }}
@@ -2037,7 +3288,7 @@ export function EChecksheetInsApdForm() {
                                 fontSize: 13, fontWeight: 700, color: "#1e293b",
                                 overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap"
                               }}>
-                                {proc.name}
+                                {resolvedProcName}
                               </div>
                               <div style={{ fontSize: 11, color: "#94a3b8", marginTop: 1 }}>
                                 {proc.subs.length} sub-proses
@@ -2058,18 +3309,20 @@ export function EChecksheetInsApdForm() {
               {/* ── Step 2: Inspeksi ───────────────────────────────────────── */}
               {step === 2 && selDept && selProc && (() => {
                 const a = ac(selDept.deptKey);
+                const resolvedDeptName = resolveLabel("dept", selDept.deptKey, selDept.deptName);
+                const resolvedProcName = resolveLabel("proses", selProc.key, selProc.name);
                 return (
                   <div>
                     {/* Breadcrumb */}
                     <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 18, flexWrap: "wrap" }}>
                       <BackBtn onClick={goBack} />
-                      <Chip label={selDept.deptName} a={a} />
+                      <Chip label={resolvedDeptName} a={a} />
                       <ChevronRight size={12} color="#cbd5e1" />
                       <span style={{
                         padding: "3px 10px", borderRadius: 999,
                         background: "#f1f5f9", fontSize: 11, fontWeight: 600, color: "#475569"
                       }}>
-                        {selProc.name}
+                        {resolvedProcName}
                       </span>
                     </div>
 
@@ -2094,9 +3347,15 @@ export function EChecksheetInsApdForm() {
                           <select value={selArea} onChange={e => setSelArea(e.target.value)}
                             className="apd-input-field">
                             <option value="">— Pilih Area —</option>
-                            {areaOptions.map(o => (
-                              <option key={o} value={o}>{o}</option>
-                            ))}
+                            {areaOptions.map(o => {
+                              const compositeKey = `${selProc.key}::${selSub}::${o}`;
+                              const resolvedAreaName = resolveLabel("area", compositeKey, o);
+                              return (
+                                <option key={o} value={o}>
+                                  {resolvedAreaName !== o ? `${resolvedAreaName} (${o})` : o}
+                                </option>
+                              );
+                            })}
                           </select>
                         </div>
                       )}
@@ -2128,18 +3387,26 @@ export function EChecksheetInsApdForm() {
                             )}
                           </div>
 
-                          {rows.map((row, idx) => (
-                            <AreaRowForm
-                              key={row.id}
-                              row={row}
-                              isCV={isCV}
-                              idx={idx}
-                              canDelete={isCV && rows.length > 1}
-                              acColor={a}
-                              onChange={updated => updateRow(row.id, updated)}
-                              onDelete={() => deleteCvRow(row.id)}
-                            />
-                          ))}
+                          {rows.map((row, idx) => {
+                            const compositeKey = `${selProc.key}::${selSub}::${row.area}`;
+                            const resolvedArea = resolveLabel("area", compositeKey, row.area);
+                            const labelDisplay = !isCV && row.area && resolvedArea !== row.area
+                              ? `${resolvedArea} (${row.area})`
+                              : undefined;
+                            return (
+                              <AreaRowForm
+                                key={row.id}
+                                row={row}
+                                isCV={isCV}
+                                idx={idx}
+                                canDelete={isCV && rows.length > 1}
+                                acColor={a}
+                                labelDisplay={labelDisplay}
+                                onChange={updated => updateRow(row.id, updated)}
+                                onDelete={() => deleteCvRow(row.id)}
+                              />
+                            );
+                          })}
                         </div>
                       )}
 
@@ -2158,17 +3425,12 @@ export function EChecksheetInsApdForm() {
                             ⚠ {saveError}
                           </span>
                         )}
-                        {!isScanned && (
-                          <span style={{ fontSize: 12, color: "#d97706", fontWeight: 600 }}>
-                            ⚠ Scan QR Code terlebih dahulu
-                          </span>
-                        )}
-                        {isScanned && !selSub && (
+                        {!selSub && (
                           <span style={{ fontSize: 12, color: "#d97706", fontWeight: 600 }}>
                             ⚠ Pilih sub-proses
                           </span>
                         )}
-                        {isScanned && selSub && isCV && !rows.some(r => r.area.trim()) && (
+                        {selSub && isCV && !rows.some(r => r.area.trim()) && (
                           <span style={{ fontSize: 12, color: "#d97706", fontWeight: 600 }}>
                             ⚠ Isi nama Conveyor
                           </span>
@@ -2186,6 +3448,265 @@ export function EChecksheetInsApdForm() {
           )}
         </div>
       </main>
+
+      {/* ══════════════════════════════════════════════════════════════════
+          MODAL: Detail Pemeriksaan APD (Adaptasi Checksheet Panel)
+      ══════════════════════════════════════════════════════════════════ */}
+      {viewingEntry && (() => {
+        const a = ac(viewingEntry.deptKey);
+        const p = entryAvgPct(viewingEntry);
+        const totalMP = viewingEntry.rows.reduce((acc, r) => acc + r.jumlahMP, 0);
+        const totalOK = viewingEntry.rows.reduce((acc, r) => acc + r.okCount, 0);
+        const totalNOK = viewingEntry.rows.reduce((acc, r) => acc + r.nokCount, 0);
+        const d = new Date(viewingEntry.date);
+        const monthName = MONTH_NAMES_ID[d.getMonth()];
+        const yearNum = d.getFullYear();
+        const dateStr = d.toLocaleDateString("id-ID", {
+          day: "numeric",
+          month: "long",
+          year: "numeric"
+        }) + " · " + d.toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" });
+
+        return (
+          <div style={{
+            position: "fixed", inset: 0, background: "rgba(15,23,42,.6)",
+            display: "flex", alignItems: "center", justifyContent: "center",
+            padding: 16, zIndex: 1100, backdropFilter: "blur(2px)"
+          }} onClick={() => setViewingEntry(null)}>
+            <div style={{
+              background: "#fff", borderRadius: 16, maxWidth: 860, width: "100%",
+              maxHeight: "90vh", overflow: "hidden", display: "flex", flexDirection: "column",
+              boxShadow: "0 20px 60px rgba(0,0,0,.3)"
+            }} onClick={e => e.stopPropagation()}>
+
+              {/* Modal Header */}
+              <div style={{
+                padding: "16px 22px", borderBottom: "1px solid #f1f5f9",
+                display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10
+              }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                  <div style={{
+                    width: 38, height: 38, borderRadius: 10, background: a.light,
+                    border: `1px solid ${a.ring}`, display: "flex", alignItems: "center",
+                    justifyContent: "center", flexShrink: 0
+                  }}>
+                    <Eye size={18} color={a.dot} />
+                  </div>
+                  <div>
+                    <div style={{ fontSize: 16, fontWeight: 800, color: "#1e293b", display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                      <span>Detail Pemeriksaan APD — {viewingEntry.prosesName} · {viewingEntry.subName}</span>
+                      {viewingEntry.isEdited && (
+                        <span style={{
+                          padding: "2px 8px", borderRadius: 999, background: "#fef3c7",
+                          border: "1px solid #fde68a", color: "#b45309", fontSize: 10.5, fontWeight: 700
+                        }}>
+                          Diedit
+                        </span>
+                      )}
+                    </div>
+                    <div style={{ fontSize: 11.5, color: "#94a3b8" }}>
+                      Departemen {viewingEntry.deptName} · Periode {monthName} {yearNum} · Waktu: {dateStr}
+                    </div>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setViewingEntry(null)}
+                  style={{
+                    background: "none", border: "none", cursor: "pointer",
+                    color: "#94a3b8", padding: 6, borderRadius: 8, display: "flex", alignItems: "center"
+                  }}
+                  onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = "#f1f5f9"; }}
+                  onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = "none"; }}
+                >
+                  <X size={18} />
+                </button>
+              </div>
+
+              {/* Modal Body */}
+              <div style={{ padding: "18px 22px", overflowY: "auto", flex: 1 }}>
+                {/* Metadata card */}
+                <div style={{
+                  display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(170px, 1fr))",
+                  gap: 12, padding: "12px 16px", background: "#f8fafc", borderRadius: 10,
+                  border: "1px solid #e2e8f0", marginBottom: 16
+                }}>
+                  <div>
+                    <div style={{ fontSize: 11, fontWeight: 700, color: "#94a3b8" }}>DEPARTEMEN</div>
+                    <div style={{ fontSize: 13, fontWeight: 700, color: "#1e293b", marginTop: 2 }}>
+                      <Chip label={viewingEntry.deptName} a={a} />
+                    </div>
+                  </div>
+                  <div>
+                    <div style={{ fontSize: 11, fontWeight: 700, color: "#94a3b8" }}>PROSES / SUB</div>
+                    <div style={{ fontSize: 13, fontWeight: 700, color: "#1e293b", marginTop: 2 }}>
+                      {viewingEntry.prosesName} — {viewingEntry.subName}
+                    </div>
+                  </div>
+                  <div>
+                    <div style={{ fontSize: 11, fontWeight: 700, color: "#94a3b8" }}>PIC CHECK / INSPEKTOR</div>
+                    <div style={{ fontSize: 13, fontWeight: 700, color: "#1e293b", marginTop: 2 }}>
+                      {viewingEntry.inspectorName || "-"}
+                    </div>
+                  </div>
+                  <div>
+                    <div style={{ fontSize: 11, fontWeight: 700, color: "#94a3b8" }}>STATUS KELAYAKAN (% OK)</div>
+                    <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 2 }}>
+                      <PctPill v={p} />
+                      <span style={{ fontSize: 11.5, color: "#64748b" }}>
+                        ({totalOK}/{totalMP} MP OK)
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Subtitle */}
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
+                  <div style={{ fontSize: 12, fontWeight: 700, color: "#475569", letterSpacing: ".04em" }}>
+                    RINCIAN HASIL PENGECEKAN PER AREA / CONVEYOR
+                  </div>
+                  <div style={{ fontSize: 11.5, color: "#64748b" }}>
+                    Total: <b style={{ color: "#1e293b" }}>{totalMP}</b> MP · <b style={{ color: "#16a34a" }}>{totalOK}</b> OK · <b style={{ color: "#dc2626" }}>{totalNOK}</b> N-OK
+                  </div>
+                </div>
+
+                {/* Daftar Area / Conveyor */}
+                <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                  {viewingEntry.rows.map((row, idx) => {
+                    const rowPct = pctOK(row);
+                    const isNg = row.nokCount > 0;
+
+                    return (
+                      <div key={row.id || idx} style={{
+                        border: `1px solid ${isNg ? "#fecaca" : "#e2e8f0"}`,
+                        borderRadius: 10, padding: "14px 16px",
+                        background: isNg ? "#fffafa" : "#ffffff"
+                      }}>
+                        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10, flexWrap: "wrap", gap: 8 }}>
+                          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                            <span style={{
+                              width: 24, height: 24, borderRadius: 6, background: isNg ? "#fee2e2" : "#f1f5f9",
+                              fontSize: 11, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center",
+                              color: isNg ? "#dc2626" : "#64748b"
+                            }}>
+                              {idx + 1}
+                            </span>
+                            <span style={{ fontSize: 14, fontWeight: 700, color: "#1e293b" }}>
+                              {row.area || `Area/Conveyor #${idx + 1}`}
+                            </span>
+                          </div>
+
+                          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                            {isNg ? (
+                              <span style={{
+                                fontSize: 11, fontWeight: 800, padding: "2px 9px", borderRadius: 999,
+                                background: "#fee2e2", color: "#dc2626", border: "1px solid #fecaca"
+                              }}>
+                                ⚠ {row.nokCount} TEMUAN N-OK
+                              </span>
+                            ) : (
+                              <span style={{
+                                fontSize: 11, fontWeight: 700, padding: "2px 9px", borderRadius: 999,
+                                background: "#dcfce7", color: "#166534", border: "1px solid #bbf7d0"
+                              }}>
+                                ✓ SEMUA PERSONEL OK (100%)
+                              </span>
+                            )}
+                            <PctPill v={rowPct} />
+                          </div>
+                        </div>
+
+                        {/* Ringkasan MP */}
+                        <div style={{
+                          display: "flex", alignItems: "center", gap: 14, fontSize: 12, color: "#475569",
+                          background: isNg ? "rgba(254,226,226,.25)" : "#f8fafc",
+                          padding: "8px 12px", borderRadius: 8, marginBottom: isNg ? 10 : 0
+                        }}>
+                          <span>Jumlah Man Power: <b style={{ color: "#1e293b" }}>{row.jumlahMP}</b></span>
+                          <span>·</span>
+                          <span style={{ color: "#16a34a" }}>OK: <b>{row.okCount}</b></span>
+                          <span>·</span>
+                          <span style={{ color: "#dc2626" }}>N-OK: <b>{row.nokCount}</b></span>
+                        </div>
+
+                        {/* Rincian temuan per NIK jika ada NOK */}
+                        {row.nokDetails && row.nokDetails.length > 0 && (
+                          <div style={{ marginTop: 8 }}>
+                            <div style={{ fontSize: 11, fontWeight: 700, color: "#b91c1c", marginBottom: 6, textTransform: "uppercase" }}>
+                              Daftar Rincian Temuan Personel (N-OK):
+                            </div>
+                            <div style={{ overflowX: "auto" }}>
+                              <table className="nok-table">
+                                <thead>
+                                  <tr>
+                                    <th style={{ width: 30, textAlign: "center" }}>No</th>
+                                    <th>NIK / Karyawan</th>
+                                    <th>Temuan Abnormal / Problem</th>
+                                    <th>Tindakan / Solusi</th>
+                                    <th>PIC</th>
+                                  </tr>
+                                </thead>
+                                <tbody>
+                                  {row.nokDetails.map((nok, nIdx) => (
+                                    <tr key={nok.id || nIdx}>
+                                      <td style={{ textAlign: "center", fontWeight: 600, color: "#94a3b8" }}>{nIdx + 1}</td>
+                                      <td style={{ fontWeight: 700, color: "#1e293b" }}>{nok.nik || "-"}</td>
+                                      <td style={{ color: "#dc2626", fontWeight: 600 }}>
+                                        {nok.finding === "Lain-lain" ? (nok.findingCustom || "Lain-lain") : (nok.finding || "-")}
+                                      </td>
+                                      <td style={{ color: "#334155" }}>{nok.tindakan || "-"}</td>
+                                      <td style={{ fontWeight: 600, color: "#475569" }}>{nok.pic || "-"}</td>
+                                    </tr>
+                                  ))}
+                                </tbody>
+                              </table>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Modal Footer */}
+              <div style={{
+                padding: "14px 22px", borderTop: "1px solid #f1f5f9", background: "#f8fafc",
+                display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10
+              }}>
+                <div style={{ fontSize: 12, color: "#64748b" }}>
+                  Status sesi: {viewingEntry.isEdited ? <b style={{ color: "#b45309" }}>Pernah diedit</b> : <b>Data orisinil</b>}
+                </div>
+                <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const e = viewingEntry;
+                      setViewingEntry(null);
+                      handleOpenEdit(e);
+                    }}
+                    className="act-btn act-btn-edit"
+                    style={{ padding: "8px 16px", fontSize: 13 }}
+                  >
+                    <Edit3 size={13} /> Edit Sesi Ini
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setViewingEntry(null)}
+                    style={{
+                      padding: "8px 18px", border: "1px solid #cbd5e1", borderRadius: 8,
+                      background: "#fff", color: "#475569", fontSize: 13, fontWeight: 600,
+                      cursor: "pointer", fontFamily: "inherit"
+                    }}
+                  >
+                    Tutup
+                  </button>
+                </div>
+              </div>
+
+            </div>
+          </div>
+        );
+      })()}
 
       {/* ══════════════════════════════════════════════════════════════════
           MODAL: Preview / Konfirmasi Simpan
@@ -2238,7 +3759,7 @@ export function EChecksheetInsApdForm() {
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 16 }}>
                   <div>
                     <Lbl ch="Departemen" />
-                    <Chip label={selDept.deptName} a={a} />
+                    <Chip label={resolveLabel("dept", selDept.deptKey, selDept.deptName)} a={a} />
                   </div>
                   <div>
                     <Lbl ch="Waktu Inspeksi (realtime)" />
@@ -2248,7 +3769,9 @@ export function EChecksheetInsApdForm() {
                   </div>
                   <div>
                     <Lbl ch="Proses" />
-                    <div style={{ fontSize: 13, fontWeight: 700, color: "#1e293b" }}>{selProc.name}</div>
+                    <div style={{ fontSize: 13, fontWeight: 700, color: "#1e293b" }}>
+                      {resolveLabel("proses", selProc.key, selProc.name)}
+                    </div>
                   </div>
                   <div>
                     <Lbl ch="Sub-Proses" />
@@ -2259,13 +3782,17 @@ export function EChecksheetInsApdForm() {
                 <SectionTitle ch={isCV ? "Detail per Conveyor" : "Detail per Area"} />
                 {rows.map((row, idx) => {
                   const pct = pctOK(row);
+                  const compositeKey = `${selProc.key}::${selSub}::${row.area}`;
+                  const rowAreaDisplay = isCV
+                    ? `CV ${idx + 1}: ${row.area || "(nama belum diisi)"}`
+                    : resolveLabel("area", compositeKey, row.area);
                   return (
                     <div key={row.id} style={{
                       border: "1px solid #e2e8f0", borderRadius: 10, padding: "10px 14px", marginBottom: 10
                     }}>
                       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6, gap: 8 }}>
                         <span style={{ fontSize: 12.5, fontWeight: 700, color: "#1e293b" }}>
-                          {isCV ? `CV ${idx + 1}: ${row.area || "(nama belum diisi)"}` : row.area}
+                          {rowAreaDisplay}
                         </span>
                         <PctPill v={pct} />
                       </div>
@@ -2327,6 +3854,577 @@ export function EChecksheetInsApdForm() {
           </div>
         );
       })()}
+      {/* ══════════════════════════════════════════════════════════════════
+          MODAL: Edit Data Inspeksi Riwayat
+      ══════════════════════════════════════════════════════════════════ */}
+      {editingEntry && (() => {
+        const a = ac(editingEntry.deptKey);
+        const isCVEdit = editingEntry.areaType === "cv" ||
+          (editingEntry.subName === "Checker & Packing" && editingEntry.prosesKey === "qa-final-assy");
+
+        return (
+          <div style={{
+            position: "fixed", inset: 0, background: "rgba(15,23,42,.6)",
+            display: "flex", alignItems: "center", justifyContent: "center",
+            padding: 16, zIndex: 1100, backdropFilter: "blur(2px)"
+          }} onClick={() => !isSavingEdit && setEditingEntry(null)}>
+            <div style={{
+              background: "#fff", borderRadius: 16, maxWidth: 840, width: "100%",
+              maxHeight: "90vh", overflow: "hidden", display: "flex", flexDirection: "column",
+              boxShadow: "0 20px 60px rgba(0,0,0,.3)"
+            }} onClick={e => e.stopPropagation()}>
+
+              {/* Modal Header */}
+              <div style={{
+                padding: "16px 20px", borderBottom: "1px solid #f1f5f9",
+                display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10
+              }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                  <div style={{
+                    width: 36, height: 36, borderRadius: 10, background: a.light,
+                    border: `1px solid ${a.ring}`,
+                    display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0
+                  }}>
+                    <Edit3 size={17} color={a.dot} />
+                  </div>
+                  <div>
+                    <div style={{ fontSize: 16, fontWeight: 800, color: "#1e293b" }}>
+                      Edit Data Inspeksi APD
+                    </div>
+                    <div style={{ fontSize: 11.5, color: "#94a3b8" }}>
+                      Sesuaikan item check, jumlah MP, OK/N-OK, dan rincian temuan di bawah
+                    </div>
+                  </div>
+                </div>
+                <button
+                  onClick={() => !isSavingEdit && setEditingEntry(null)}
+                  disabled={isSavingEdit}
+                  style={{
+                    background: "none", border: "none", cursor: isSavingEdit ? "not-allowed" : "pointer",
+                    color: "#94a3b8", padding: 6, borderRadius: 8, display: "flex", alignItems: "center"
+                  }}
+                  onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = "#f1f5f9"; }}
+                  onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = "none"; }}
+                >
+                  <X size={18} />
+                </button>
+              </div>
+
+              {/* Modal Body */}
+              <div style={{ padding: "18px 22px", overflowY: "auto", flex: 1 }}>
+                {editError && (
+                  <div style={{
+                    marginBottom: 14, padding: "10px 14px", borderRadius: 8,
+                    background: "#fef2f2", border: "1px solid #fecaca",
+                    fontSize: 12.5, fontWeight: 600, color: "#dc2626",
+                    display: "flex", alignItems: "center", gap: 8
+                  }}>
+                    <AlertCircle size={15} color="#dc2626" />
+                    <span>{editError}</span>
+                  </div>
+                )}
+
+                {/* Metadata info */}
+                <div style={{
+                  display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))",
+                  gap: 12, padding: "12px 14px", background: "#f8fafc", borderRadius: 10,
+                  border: "1px solid #e2e8f0", marginBottom: 16
+                }}>
+                  <div>
+                    <Lbl ch="Departemen" />
+                    <Chip label={editingEntry.deptName} a={a} />
+                  </div>
+                  <div>
+                    <Lbl ch="Proses" />
+                    <div style={{ fontSize: 13, fontWeight: 700, color: "#1e293b" }}>
+                      {editingEntry.prosesName}
+                    </div>
+                  </div>
+                  <div>
+                    <Lbl ch="Sub-Proses" />
+                    <div style={{ fontSize: 13, fontWeight: 700, color: "#1e293b" }}>
+                      {editingEntry.subName}
+                    </div>
+                  </div>
+                  <div>
+                    <Lbl ch="Tgl Asli Pengambilan" />
+                    <div style={{ fontSize: 12, fontWeight: 600, color: "#475569" }}>
+                      {new Date(editingEntry.date).toLocaleString("id-ID", { dateStyle: "medium", timeStyle: "short" })}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Form Items editing */}
+                <div style={{
+                  display: "flex", alignItems: "center", justifyContent: "space-between",
+                  marginBottom: 12
+                }}>
+                  <SectionTitle ch={isCVEdit ? "Edit Form per Conveyor" : "Edit Form per Area"} />
+                  {isCVEdit && (
+                    <button className="apd-add-btn" style={{ width: "auto", padding: "6px 14px" }}
+                      onClick={handleAddEditCvRow}>
+                      <Plus size={13} /> Tambah Conveyor
+                    </button>
+                  )}
+                </div>
+
+                {editRows.map((row, idx) => (
+                  <AreaRowForm
+                    key={row.id}
+                    row={row}
+                    isCV={isCVEdit}
+                    idx={idx}
+                    canDelete={isCVEdit && editRows.length > 1}
+                    acColor={a}
+                    onChange={updated => handleUpdateEditRow(row.id, updated)}
+                    onDelete={() => handleDeleteEditCvRow(row.id)}
+                  />
+                ))}
+
+                {editRows.length === 0 && (
+                  <div style={{ textAlign: "center", color: "#94a3b8", fontSize: 13, padding: "24px 0" }}>
+                    Belum ada baris inspeksi area.
+                  </div>
+                )}
+              </div>
+
+              {/* Modal Footer */}
+              <div style={{
+                padding: "14px 20px", borderTop: "1px solid #f1f5f9",
+                display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10
+              }}>
+                <div style={{ fontSize: 11.5, color: "#94a3b8" }}>
+                  Status akan otomatis ditandai <b>"Diedit"</b> setelah disimpan.
+                </div>
+                <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                  <button
+                    onClick={() => setEditingEntry(null)}
+                    disabled={isSavingEdit}
+                    style={{
+                      padding: "9px 18px", border: "1px solid #e2e8f0", borderRadius: 9,
+                      background: "#fff", color: "#475569", fontSize: 13, fontWeight: 600,
+                      cursor: isSavingEdit ? "not-allowed" : "pointer", fontFamily: "inherit"
+                    }}
+                  >
+                    Batal
+                  </button>
+                  <button
+                    className="apd-save"
+                    disabled={isSavingEdit || editRows.length === 0}
+                    onClick={handleSaveEdit}
+                  >
+                    <Save size={15} />
+                    {isSavingEdit ? "Menyimpan Perubahan…" : "Simpan Perubahan"}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+
+      {/* ══════════════════════════════════════════════════════════════════
+          MODAL: Konfirmasi Hapus Data
+      ══════════════════════════════════════════════════════════════════ */}
+      {deletingEntry && (
+        <div style={{
+          position: "fixed", inset: 0, background: "rgba(15,23,42,.6)",
+          display: "flex", alignItems: "center", justifyContent: "center",
+          padding: 16, zIndex: 1150, backdropFilter: "blur(2px)"
+        }} onClick={() => !isDeleting && setDeletingEntry(null)}>
+          <div style={{
+            background: "#fff", borderRadius: 16, maxWidth: 460, width: "100%",
+            overflow: "hidden", display: "flex", flexDirection: "column",
+            boxShadow: "0 20px 60px rgba(0,0,0,.3)"
+          }} onClick={e => e.stopPropagation()}>
+            <div style={{ padding: "20px 24px" }}>
+              <div style={{
+                width: 44, height: 44, borderRadius: 12, background: "#fef2f2",
+                border: "1px solid #fecaca", display: "flex", alignItems: "center",
+                justifyContent: "center", marginBottom: 14
+              }}>
+                <Trash2 size={22} color="#dc2626" />
+              </div>
+              <div style={{ fontSize: 17, fontWeight: 800, color: "#1e293b", marginBottom: 6 }}>
+                Hapus Data Inspeksi?
+              </div>
+              <p style={{ fontSize: 13, color: "#64748b", margin: 0, lineHeight: 1.5 }}>
+                Apakah Anda yakin ingin menghapus data inspeksi untuk proses{" "}
+                <b style={{ color: "#1e293b" }}>{deletingEntry.prosesName} · {deletingEntry.subName}</b>{" "}
+                ({deletingEntry.deptName})?
+              </p>
+              <div style={{
+                marginTop: 12, padding: "10px 12px", background: "#f8fafc",
+                borderRadius: 8, border: "1px solid #e2e8f0", fontSize: 12, color: "#475569"
+              }}>
+                <div>Tgl Inspeksi: <b>{new Date(deletingEntry.date).toLocaleString("id-ID", { dateStyle: "medium", timeStyle: "short" })}</b></div>
+                <div style={{ marginTop: 2 }}>Total MP: <b>{deletingEntry.rows.reduce((a, r) => a + r.jumlahMP, 0)}</b> | OK: <b style={{ color: "#16a34a" }}>{deletingEntry.rows.reduce((a, r) => a + r.okCount, 0)}</b> | N-OK: <b style={{ color: "#dc2626" }}>{deletingEntry.rows.reduce((a, r) => a + r.nokCount, 0)}</b></div>
+              </div>
+
+              {deleteError && (
+                <div style={{
+                  marginTop: 12, padding: "8px 12px", borderRadius: 8,
+                  background: "#fef2f2", border: "1px solid #fecaca",
+                  fontSize: 12, fontWeight: 600, color: "#dc2626"
+                }}>
+                  ⚠ {deleteError}
+                </div>
+              )}
+            </div>
+
+            <div style={{
+              padding: "12px 20px", background: "#f8fafc", borderTop: "1px solid #e2e8f0",
+              display: "flex", alignItems: "center", justifyContent: "flex-end", gap: 10
+            }}>
+              <button
+                onClick={() => setDeletingEntry(null)}
+                disabled={isDeleting}
+                style={{
+                  padding: "8px 16px", border: "1px solid #cbd5e1", borderRadius: 8,
+                  background: "#fff", color: "#475569", fontSize: 13, fontWeight: 600,
+                  cursor: isDeleting ? "not-allowed" : "pointer", fontFamily: "inherit"
+                }}
+              >
+                Batal
+              </button>
+              <button
+                onClick={handleDeleteEntry}
+                disabled={isDeleting}
+                style={{
+                  display: "inline-flex", alignItems: "center", gap: 6,
+                  padding: "8px 18px", border: "none", borderRadius: 8,
+                  background: "#dc2626", color: "#fff", fontSize: 13, fontWeight: 700,
+                  cursor: isDeleting ? "not-allowed" : "pointer",
+                  boxShadow: "0 2px 6px rgba(220,38,38,.25)", fontFamily: "inherit"
+                }}
+              >
+                <Trash2 size={14} />
+                {isDeleting ? "Menghapus…" : "Ya, Hapus Data"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Modal Tambah Departemen ── */}
+      {showAddDeptModal && (
+        <div style={{
+          position: "fixed", inset: 0, background: "rgba(15,23,42,.6)",
+          display: "flex", alignItems: "center", justifyContent: "center",
+          padding: 16, zIndex: 1150, backdropFilter: "blur(2px)"
+        }} onClick={() => !isAddingMaster && setShowAddDeptModal(false)}>
+          <div style={{
+            background: "#fff", borderRadius: 16, maxWidth: 440, width: "100%",
+            boxShadow: "0 20px 60px rgba(0,0,0,.3)", overflow: "hidden"
+          }} onClick={e => e.stopPropagation()}>
+            <div style={{ padding: "16px 20px", borderBottom: "1px solid #f1f5f9", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <Factory size={18} color="#7c3aed" />
+                <span style={{ fontSize: 15, fontWeight: 800, color: "#1e293b" }}>Tambah Departemen Baru</span>
+              </div>
+              <button onClick={() => setShowAddDeptModal(false)} style={{ background: "none", border: "none", cursor: "pointer", color: "#94a3b8" }}>
+                <X size={18} />
+              </button>
+            </div>
+            <div style={{ padding: "20px" }}>
+              <label style={{ display: "block", fontSize: 12, fontWeight: 700, color: "#475569", marginBottom: 6 }}>
+                Nama Departemen <span style={{ color: "#ef4444" }}>*</span>
+              </label>
+              <input
+                autoFocus
+                type="text"
+                value={newDeptName}
+                onChange={e => setNewDeptName(e.target.value)}
+                onKeyDown={e => {
+                  if (e.key === "Enter" && newDeptName.trim()) handleAddMasterItem("dept", newDeptName);
+                }}
+                placeholder="Contoh: LOGISTIK, MAINTENANCE 2..."
+                style={{
+                  width: "100%", padding: "9px 12px", border: "1.5px solid #cbd5e1",
+                  borderRadius: 8, fontSize: 13, outline: "none", fontFamily: "inherit", boxSizing: "border-box"
+                }}
+              />
+              {addMasterError && (
+                <div style={{ marginTop: 10, fontSize: 12, color: "#dc2626", fontWeight: 600 }}>
+                  ⚠ {addMasterError}
+                </div>
+              )}
+            </div>
+            <div style={{ padding: "12px 20px", background: "#f8fafc", borderTop: "1px solid #e2e8f0", display: "flex", justifyContent: "flex-end", gap: 10 }}>
+              <button
+                onClick={() => setShowAddDeptModal(false)}
+                disabled={isAddingMaster}
+                style={{ padding: "8px 16px", border: "1px solid #cbd5e1", borderRadius: 8, background: "#fff", color: "#475569", fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>
+                Batal
+              </button>
+              <button
+                onClick={() => handleAddMasterItem("dept", newDeptName)}
+                disabled={isAddingMaster || !newDeptName.trim()}
+                style={{
+                  padding: "8px 18px", border: "none", borderRadius: 8, background: "#7c3aed", color: "#fff",
+                  fontSize: 13, fontWeight: 700, cursor: isAddingMaster || !newDeptName.trim() ? "not-allowed" : "pointer",
+                  opacity: isAddingMaster || !newDeptName.trim() ? 0.6 : 1, fontFamily: "inherit"
+                }}>
+                {isAddingMaster ? "Menyimpan..." : "Simpan Departemen"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Modal Tambah Proses ── */}
+      {showAddProsesModal && (
+        <div style={{
+          position: "fixed", inset: 0, background: "rgba(15,23,42,.6)",
+          display: "flex", alignItems: "center", justifyContent: "center",
+          padding: 16, zIndex: 1150, backdropFilter: "blur(2px)"
+        }} onClick={() => !isAddingMaster && setShowAddProsesModal(false)}>
+          <div style={{
+            background: "#fff", borderRadius: 16, maxWidth: 480, width: "100%",
+            boxShadow: "0 20px 60px rgba(0,0,0,.3)", overflow: "hidden"
+          }} onClick={e => e.stopPropagation()}>
+            <div style={{ padding: "16px 20px", borderBottom: "1px solid #f1f5f9", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <BarChart3 size={18} color="#059669" />
+                <span style={{ fontSize: 15, fontWeight: 800, color: "#1e293b" }}>Tambah Proses Baru</span>
+              </div>
+              <button onClick={() => setShowAddProsesModal(false)} style={{ background: "none", border: "none", cursor: "pointer", color: "#94a3b8" }}>
+                <X size={18} />
+              </button>
+            </div>
+            <div style={{ padding: "20px", display: "flex", flexDirection: "column", gap: 14 }}>
+              <div>
+                <label style={{ display: "block", fontSize: 12, fontWeight: 700, color: "#475569", marginBottom: 6 }}>
+                  Pilih Departemen Induk <span style={{ color: "#ef4444" }}>*</span>
+                </label>
+                <select
+                  value={newProsesDeptKey}
+                  onChange={e => setNewProsesDeptKey(e.target.value)}
+                  style={{ width: "100%", padding: "9px 12px", border: "1.5px solid #cbd5e1", borderRadius: 8, fontSize: 13, background: "#fff", outline: "none", fontFamily: "inherit" }}
+                >
+                  {dynamicDeptConfig.map(d => (
+                    <option key={d.deptKey} value={d.deptKey}>
+                      {resolveLabel("dept", d.deptKey, d.deptName)}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label style={{ display: "block", fontSize: 12, fontWeight: 700, color: "#475569", marginBottom: 6 }}>
+                  Nama Proses <span style={{ color: "#ef4444" }}>*</span>
+                </label>
+                <input
+                  autoFocus
+                  type="text"
+                  value={newProsesName}
+                  onChange={e => setNewProsesName(e.target.value)}
+                  placeholder="Contoh: INLINE INSPECTION, PACKING..."
+                  style={{
+                    width: "100%", padding: "9px 12px", border: "1.5px solid #cbd5e1",
+                    borderRadius: 8, fontSize: 13, outline: "none", fontFamily: "inherit", boxSizing: "border-box"
+                  }}
+                />
+              </div>
+
+              <div>
+                <label style={{ display: "block", fontSize: 12, fontWeight: 700, color: "#475569", marginBottom: 6 }}>
+                  Tipe Area Inspeksi
+                </label>
+                <select
+                  value={newProsesAreaType}
+                  onChange={e => setNewProsesAreaType(e.target.value as any)}
+                  style={{ width: "100%", padding: "9px 12px", border: "1.5px solid #cbd5e1", borderRadius: 8, fontSize: 13, background: "#fff", outline: "none", fontFamily: "inherit" }}
+                >
+                  <option value="predefined-per-sub">Predefined Area (Pilihan Area tetap per Sub-Proses)</option>
+                  <option value="cv">Conveyor / CV (Dinamis per nomor conveyor)</option>
+                  <option value="none">Tanpa Area Spesifik (Satu area umum)</option>
+                </select>
+              </div>
+
+              {addMasterError && (
+                <div style={{ fontSize: 12, color: "#dc2626", fontWeight: 600 }}>
+                  ⚠ {addMasterError}
+                </div>
+              )}
+            </div>
+            <div style={{ padding: "12px 20px", background: "#f8fafc", borderTop: "1px solid #e2e8f0", display: "flex", justifyContent: "flex-end", gap: 10 }}>
+              <button
+                onClick={() => setShowAddProsesModal(false)}
+                disabled={isAddingMaster}
+                style={{ padding: "8px 16px", border: "1px solid #cbd5e1", borderRadius: 8, background: "#fff", color: "#475569", fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>
+                Batal
+              </button>
+              <button
+                onClick={() => handleAddMasterItem("proses", newProsesName, newProsesDeptKey, newProsesAreaType)}
+                disabled={isAddingMaster || !newProsesName.trim() || !newProsesDeptKey}
+                style={{
+                  padding: "8px 18px", border: "none", borderRadius: 8, background: "#059669", color: "#fff",
+                  fontSize: 13, fontWeight: 700, cursor: isAddingMaster || !newProsesName.trim() ? "not-allowed" : "pointer",
+                  opacity: isAddingMaster || !newProsesName.trim() ? 0.6 : 1, fontFamily: "inherit"
+                }}>
+                {isAddingMaster ? "Menyimpan..." : "Simpan Proses"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Modal Tambah Sub-Proses ── */}
+      {showAddSubModal && (
+        <div style={{
+          position: "fixed", inset: 0, background: "rgba(15,23,42,.6)",
+          display: "flex", alignItems: "center", justifyContent: "center",
+          padding: 16, zIndex: 1150, backdropFilter: "blur(2px)"
+        }} onClick={() => !isAddingMaster && setShowAddSubModal(false)}>
+          <div style={{
+            background: "#fff", borderRadius: 16, maxWidth: 440, width: "100%",
+            boxShadow: "0 20px 60px rgba(0,0,0,.3)", overflow: "hidden"
+          }} onClick={e => e.stopPropagation()}>
+            <div style={{ padding: "16px 20px", borderBottom: "1px solid #f1f5f9", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <ClipboardList size={18} color="#0284c7" />
+                <span style={{ fontSize: 15, fontWeight: 800, color: "#1e293b" }}>Tambah Sub-Proses Baru</span>
+              </div>
+              <button onClick={() => setShowAddSubModal(false)} style={{ background: "none", border: "none", cursor: "pointer", color: "#94a3b8" }}>
+                <X size={18} />
+              </button>
+            </div>
+            <div style={{ padding: "20px", display: "flex", flexDirection: "column", gap: 14 }}>
+              <div>
+                <label style={{ display: "block", fontSize: 12, fontWeight: 700, color: "#475569", marginBottom: 6 }}>
+                  Proses Induk
+                </label>
+                <div style={{ fontSize: 13, fontWeight: 700, color: "#1e293b", background: "#f8fafc", padding: "8px 12px", borderRadius: 8, border: "1px solid #e2e8f0" }}>
+                  {(() => {
+                    const proc = dynamicDeptConfig.flatMap(d => d.proses).find(p => p.key === newSubProsesKey);
+                    return proc ? proc.name : newSubProsesKey;
+                  })()}
+                </div>
+              </div>
+
+              <div>
+                <label style={{ display: "block", fontSize: 12, fontWeight: 700, color: "#475569", marginBottom: 6 }}>
+                  Nama Sub-Proses <span style={{ color: "#ef4444" }}>*</span>
+                </label>
+                <input
+                  autoFocus
+                  type="text"
+                  value={newSubName}
+                  onChange={e => setNewSubName(e.target.value)}
+                  placeholder="Contoh: Crimping, Cutting, Quality Gate..."
+                  style={{
+                    width: "100%", padding: "9px 12px", border: "1.5px solid #cbd5e1",
+                    borderRadius: 8, fontSize: 13, outline: "none", fontFamily: "inherit", boxSizing: "border-box"
+                  }}
+                />
+              </div>
+
+              {addMasterError && (
+                <div style={{ fontSize: 12, color: "#dc2626", fontWeight: 600 }}>
+                  ⚠ {addMasterError}
+                </div>
+              )}
+            </div>
+            <div style={{ padding: "12px 20px", background: "#f8fafc", borderTop: "1px solid #e2e8f0", display: "flex", justifyContent: "flex-end", gap: 10 }}>
+              <button
+                onClick={() => setShowAddSubModal(false)}
+                disabled={isAddingMaster}
+                style={{ padding: "8px 16px", border: "1px solid #cbd5e1", borderRadius: 8, background: "#fff", color: "#475569", fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>
+                Batal
+              </button>
+              <button
+                onClick={() => handleAddMasterItem("sub", newSubName, newSubProsesKey)}
+                disabled={isAddingMaster || !newSubName.trim() || !newSubProsesKey}
+                style={{
+                  padding: "8px 18px", border: "none", borderRadius: 8, background: "#0284c7", color: "#fff",
+                  fontSize: 13, fontWeight: 700, cursor: isAddingMaster || !newSubName.trim() ? "not-allowed" : "pointer",
+                  opacity: isAddingMaster || !newSubName.trim() ? 0.6 : 1, fontFamily: "inherit"
+                }}>
+                {isAddingMaster ? "Menyimpan..." : "Simpan Sub-Proses"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Modal Tambah Area ── */}
+      {showAddAreaModal && (
+        <div style={{
+          position: "fixed", inset: 0, background: "rgba(15,23,42,.6)",
+          display: "flex", alignItems: "center", justifyContent: "center",
+          padding: 16, zIndex: 1150, backdropFilter: "blur(2px)"
+        }} onClick={() => !isAddingMaster && setShowAddAreaModal(false)}>
+          <div style={{
+            background: "#fff", borderRadius: 16, maxWidth: 440, width: "100%",
+            boxShadow: "0 20px 60px rgba(0,0,0,.3)", overflow: "hidden"
+          }} onClick={e => e.stopPropagation()}>
+            <div style={{ padding: "16px 20px", borderBottom: "1px solid #f1f5f9", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <MapPin size={18} color="#d97706" />
+                <span style={{ fontSize: 15, fontWeight: 800, color: "#1e293b" }}>Tambah Area Baru</span>
+              </div>
+              <button onClick={() => setShowAddAreaModal(false)} style={{ background: "none", border: "none", cursor: "pointer", color: "#94a3b8" }}>
+                <X size={18} />
+              </button>
+            </div>
+            <div style={{ padding: "20px", display: "flex", flexDirection: "column", gap: 14 }}>
+              <div>
+                <label style={{ display: "block", fontSize: 12, fontWeight: 700, color: "#475569", marginBottom: 4 }}>
+                  Proses & Sub-Proses
+                </label>
+                <div style={{ fontSize: 12.5, fontWeight: 600, color: "#1e293b", background: "#f8fafc", padding: "8px 12px", borderRadius: 8, border: "1px solid #e2e8f0" }}>
+                  {(() => {
+                    const proc = dynamicDeptConfig.flatMap(d => d.proses).find(p => p.key === newAreaProsesKey);
+                    return `${proc ? proc.name : newAreaProsesKey} › ${newAreaSubName}`;
+                  })()}
+                </div>
+              </div>
+
+              <div>
+                <label style={{ display: "block", fontSize: 12, fontWeight: 700, color: "#475569", marginBottom: 6 }}>
+                  Nama Area Baru <span style={{ color: "#ef4444" }}>*</span>
+                </label>
+                <input
+                  autoFocus
+                  type="text"
+                  value={newAreaName}
+                  onChange={e => setNewAreaName(e.target.value)}
+                  placeholder="Contoh: Line 05, Area Khusus, Toyota BCL..."
+                  style={{
+                    width: "100%", padding: "9px 12px", border: "1.5px solid #cbd5e1",
+                    borderRadius: 8, fontSize: 13, outline: "none", fontFamily: "inherit", boxSizing: "border-box"
+                  }}
+                />
+              </div>
+
+              {addMasterError && (
+                <div style={{ fontSize: 12, color: "#dc2626", fontWeight: 600 }}>
+                  ⚠ {addMasterError}
+                </div>
+              )}
+            </div>
+            <div style={{ padding: "12px 20px", background: "#f8fafc", borderTop: "1px solid #e2e8f0", display: "flex", justifyContent: "flex-end", gap: 10 }}>
+              <button
+                onClick={() => setShowAddAreaModal(false)}
+                disabled={isAddingMaster}
+                style={{ padding: "8px 16px", border: "1px solid #cbd5e1", borderRadius: 8, background: "#fff", color: "#475569", fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>
+                Batal
+              </button>
+              <button
+                onClick={() => handleAddMasterItem("area", newAreaName, `${newAreaProsesKey}::${newAreaSubName}`)}
+                disabled={isAddingMaster || !newAreaName.trim() || !newAreaProsesKey || !newAreaSubName}
+                style={{
+                  padding: "8px 18px", border: "none", borderRadius: 8, background: "#d97706", color: "#fff",
+                  fontSize: 13, fontWeight: 700, cursor: isAddingMaster || !newAreaName.trim() ? "not-allowed" : "pointer",
+                  opacity: isAddingMaster || !newAreaName.trim() ? 0.6 : 1, fontFamily: "inherit"
+                }}>
+                {isAddingMaster ? "Menyimpan..." : "Simpan Area"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -1,18 +1,55 @@
 // components/ConnectionStatus.tsx
 "use client";
+import { useEffect, useState, useRef } from 'react';
 import { useConnection } from '@/lib/connection-context';
 
 export function ConnectionStatus() {
   const { isOnline, pendingCount } = useConnection();
+  const [visible, setVisible] = useState(false);
+  const prevOnlineRef = useRef<boolean | null>(null);
+
+  useEffect(() => {
+    // Jika offline: selalu tampilkan notifikasi offline
+    if (!isOnline) {
+      setVisible(true);
+      prevOnlineRef.current = false;
+      return;
+    }
+
+    // Jika online:
+    // Jika baru saja beralih dari offline -> online, atau ada pending sync yang aktif
+    if (prevOnlineRef.current === false || pendingCount > 0) {
+      setVisible(true);
+      // Notifikasi online muncul beberapa detik saja (misal 3.5 detik) lalu close pop-up
+      const timer = setTimeout(() => {
+        setVisible(false);
+      }, 3500);
+      prevOnlineRef.current = true;
+      return () => clearTimeout(timer);
+    }
+
+    // Kondisi inisial saat aplikasi pertama buka dan sudah online tanpa antrian
+    if (prevOnlineRef.current === null) {
+      setVisible(true);
+      const timer = setTimeout(() => {
+        setVisible(false);
+      }, 3000);
+      prevOnlineRef.current = true;
+      return () => clearTimeout(timer);
+    }
+  }, [isOnline, pendingCount]);
+
+  if (!visible) return null;
 
   return (
     <div
       style={{
         position: 'fixed',
-        top: 10,
-        right: 10,
+        top: 12,
+        left: '50%',
+        transform: 'translateX(-50%)',
         zIndex: 9998,
-        padding: '6px 12px',
+        padding: '6px 14px',
         borderRadius: '20px',
         background: isOnline ? '#10b981' : '#dc2626',
         color: 'white',
@@ -21,7 +58,9 @@ export function ConnectionStatus() {
         display: 'flex',
         alignItems: 'center',
         gap: '6px',
-        boxShadow: '0 2px 8px rgba(0,0,0,0.2)',
+        boxShadow: '0 2px 10px rgba(0,0,0,0.25)',
+        transition: 'all 0.3s ease',
+        pointerEvents: 'none',
       }}
     >
       <span
@@ -33,9 +72,9 @@ export function ConnectionStatus() {
           animation: isOnline ? 'none' : 'pulse 1.5s infinite',
         }}
       />
-      {isOnline ? 'Online' : 'Offline'}
+      <span>{isOnline ? 'Online' : 'Offline'}</span>
       {pendingCount > 0 && (
-        <span style={{ background: 'rgba(0,0,0,0.2)', padding: '2px 6px', borderRadius: 10 }}>
+        <span style={{ background: 'rgba(0,0,0,0.25)', padding: '2px 6px', borderRadius: 10 }}>
           {pendingCount}
         </span>
       )}
@@ -47,4 +86,4 @@ export function ConnectionStatus() {
       `}</style>
     </div>
   );
-}
+}
