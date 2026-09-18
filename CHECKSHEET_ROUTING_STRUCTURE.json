@@ -273,6 +273,32 @@
     "hasRiwayat": true,
     "queryParams": []
   },
+  "power-house": {
+    "folder": "power-house",
+    "mainRoute": "/status-ga/power-house",
+    "historyRoute": "N/A (embedded in modal)",
+    "paramType": "none",
+    "paramName": "unit",
+    "values": [
+      "storage-tank",
+      "warming-up-genset",
+      "tangki-solar",
+      "genset-generating-set",
+      "main-panel",
+      "trafo-transformer",
+      "air-dryer-arx90hl",
+      "air-dryer-fx14",
+      "booster-pump",
+      "kontaktor-compressor",
+      "compressor-fix-3",
+      "compressor-thermal",
+      "compressor-vsd"
+    ],
+    "note": "Dashboard-based Power House inspection for 13 utility equipments",
+    "hasRiwayat": false,
+    "componentBased": true,
+    "queryParams": []
+  },
   "ga-inf-jalan": {
     "folder": "ga-inf-jalan",
     "mainRoute": "/status-ga/ga-inf-jalan",

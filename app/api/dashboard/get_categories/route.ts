@@ -12,6 +12,7 @@ export async function GET() {
       { label: 'Lift Barang Inspection', value: 'lift-barang', type: 'equipment', area: 'equipment' },
       { label: 'Panel Listrik Inspection', value: 'panel-listrik', type: 'equipment', area: 'equipment' },
       { label: 'Stop Kontak Inspection', value: 'stop-kontak', type: 'electrical', area: 'electrical' },
+      { label: 'Power House Inspection', value: 'power-house', type: 'electrical', area: 'electrical' },
       { label: 'Tangga Listrik Inspection', value: 'tangga-listrik', type: 'equipment', area: 'equipment' },
     ];
 

@@ -135,6 +135,7 @@ const CHECKSHEET_CATEGORIES: ChecksheetCategory[] = [
     items: [
       { key: "panel", label: "⚡ Panel Listrik", path: "/status-ga/panel", description: "Cek kondisi panel distribusi", icon: "⚡" },
       { key: "form-inspeksi-stop-kontak", label: "🔌 Stop Kontak", path: "/status-ga/form-inspeksi-stop-kontak", description: "Pemeriksaan outlet area kerja", icon: "🔌" },
+      { key: "power-house", label: "🏭 Power House", path: "/status-ga/power-house", description: "Pemeriksaan utilitas Travo, Genset, Compressor", icon: "🏭" },
     ]
   },
   {

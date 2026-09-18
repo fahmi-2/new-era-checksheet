@@ -14,25 +14,41 @@ export interface TopUsersResponse {
   data: Array<{ name: string; count: number }>;
 }
 
+export interface NGItemDetail {
+  item: string;
+  finding?: string;
+  correctiveAction?: string;
+  pic?: string;
+  isRepaired: boolean;
+  foto?: string;
+}
+
 export interface DashboardData {
   stats: {
     total: number;
     completed: number;
     pending: number;
+    repaired: number;
+    unrepaired: number;
     completionRate: string;
   };
   trendData:        Array<{ date: string; count: number }>;
   distributionData: Array<{ category: string; status: string; count: number }>;
   topUsers:         Array<{ name: string; count: number }>;
   historyData:      Array<{
+    id?:       string | number;
     filledAt:  string;
     area:      string;
     category:  string;
     shift:     string;
     status:    string;
     ngCount:   number;
+    repairedCount?: number;
+    unrepairedCount?: number;
     filledBy:  string;
     formType?: string;
+    editUrl?:  string;
+    ngDetails?: NGItemDetail[];
   }>;
 }
 
@@ -260,15 +276,29 @@ export async function fetchHistory(
       const filledAtRaw = r.filledAt ?? r.filled_at ?? r.checklist_date ?? r.inspection_date ?? '';
       const filledByRaw = r.filledBy ?? r.filled_by ?? r.checker_name ?? r.checker ?? r.inspector ?? r.inspector_name ?? '-';
       
+      const ngDetails: NGItemDetail[] = Array.isArray(r.ngDetails) ? r.ngDetails.map((item: any) => ({
+        item: String(item.item || 'Item'),
+        finding: item.finding || item.keterangan || '',
+        correctiveAction: item.correctiveAction || item.tindakan || item.tindakanPerbaikan || '',
+        pic: item.pic || '',
+        isRepaired: Boolean(item.isRepaired || item.is_repaired),
+        foto: item.foto || item.foto_path || undefined
+      })) : [];
+
       return {
+        id:        r.id,
         filledAt:  parseTimestamp(filledAtRaw, 'filledAt'),
         area:      String(r.area ?? 'N/A').trim() || 'N/A',
         category:  String(r.category ?? r.formType ?? slug ?? 'Unknown').trim() || 'Unknown',
         shift:     String(r.shift ?? 'Pagi').trim() || 'Pagi',
         status:    String(r.status ?? 'OK').toUpperCase() || 'OK',
         ngCount:   parseInteger(r.ngCount ?? r.ng_count ?? 0, 'ngCount', 0),
+        repairedCount: parseInteger(r.repairedCount ?? r.repaired_count ?? 0, 'repairedCount', 0),
+        unrepairedCount: parseInteger(r.unrepairedCount ?? r.unrepaired_count ?? 0, 'unrepairedCount', 0),
         filledBy:  String(filledByRaw).trim() || '-',
         formType:  String(r.formType ?? '-').trim() || '-',
+        editUrl:   r.editUrl || undefined,
+        ngDetails,
       };
     });
 
@@ -294,7 +324,7 @@ export function mapAnalyticsToDashboard(
   historyDataRaw: DashboardData['historyData']               = []
 ): DashboardData {
   const empty: DashboardData = {
-    stats: { total: 0, completed: 0, pending: 0, completionRate: '0.0' },
+    stats: { total: 0, completed: 0, pending: 0, repaired: 0, unrepaired: 0, completionRate: '0.0' },
     trendData: [], 
     distributionData: [],
     topUsers: topUsersData,
@@ -322,6 +352,30 @@ export function mapAnalyticsToDashboard(
     return empty;
   }
 
+  // Hitung status perbaikan dari historyDataRaw
+  let repaired = 0;
+  let unrepaired = 0;
+  historyDataRaw.forEach(item => {
+    if (item.ngCount > 0) {
+      if (item.repairedCount !== undefined && item.unrepairedCount !== undefined && (item.repairedCount > 0 || item.unrepairedCount > 0)) {
+        repaired += item.repairedCount;
+        unrepaired += item.unrepairedCount;
+      } else if (item.ngDetails && item.ngDetails.length > 0) {
+        const rep = item.ngDetails.filter(d => d.isRepaired).length;
+        repaired += rep;
+        unrepaired += (item.ngDetails.length - rep);
+      } else {
+        // Default jika belum ada status perbaikan spesifik
+        unrepaired += item.ngCount;
+      }
+    }
+  });
+
+  // Jika totalNG > 0 tapi unrepaired masih 0 (karena riwayat halaman pertama saja), gunakan totalNG sebagai fallback
+  if (totalNG > 0 && repaired === 0 && unrepaired === 0) {
+    unrepaired = totalNG;
+  }
+
   // ✅ IMPROVED: Duplicate date handling
   const trendMap = new Map<string, number>();
   analyticsData.forEach(d => {
@@ -339,13 +393,15 @@ export function mapAnalyticsToDashboard(
     count:    parseInteger(d.count, `distribution.${d.date}.${d.status}`),
   }));
 
-  console.log(`✅ [Mapper] ${formLabel}: total=${total}, OK=${totalOK}, NG=${totalNG}`);
+  console.log(`✅ [Mapper] ${formLabel}: total=${total}, OK=${totalOK}, NG=${totalNG}, repaired=${repaired}, unrepaired=${unrepaired}`);
 
   return {
     stats: {
       total,
       completed:      totalOK,
       pending:        totalNG,
+      repaired,
+      unrepaired,
       completionRate: total > 0 ? ((totalOK / total) * 100).toFixed(1) : '0.0',
     },
     trendData,

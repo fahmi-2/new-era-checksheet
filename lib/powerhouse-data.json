@@ -1,0 +1,884 @@
+[
+  {
+    "id": "storage-tank-2",
+    "no": 1,
+    "name": "Storage Tank (2)",
+    "checkpoints": [
+      {
+        "no": 1,
+        "point": "Check kebocoran udara",
+        "standard": "Tdk ada kebocoran",
+        "method": "Visual",
+        "sample": "O"
+      },
+      {
+        "no": 2,
+        "point": "Air press tank",
+        "standard": "5 - 11,5 kg/cm\u00b2",
+        "method": "Visual",
+        "sample": "7"
+      },
+      {
+        "no": 3,
+        "point": "Kebersihan Tangki",
+        "standard": "Tidak ada benda asing",
+        "method": "Visual",
+        "sample": "O"
+      },
+      {
+        "no": 4,
+        "point": "Saluran Air Kondensasi",
+        "standard": "Berfungsi",
+        "method": "Visual",
+        "sample": "O"
+      }
+    ]
+  },
+  {
+    "id": "warming-up-fc-4",
+    "no": 2,
+    "name": "Warming Up (FC 4)",
+    "checkpoints": [
+      {
+        "no": 1,
+        "point": "Jam Start Warming Up Genset",
+        "standard": "Sesuai Jadwal Operasional",
+        "method": "Pencatatan",
+        "sample": "08:00"
+      },
+      {
+        "no": 2,
+        "point": "Tegangan / Voltage Output Genset",
+        "standard": "380V - 400V",
+        "method": "Visual Display",
+        "sample": "395V"
+      },
+      {
+        "no": 3,
+        "point": "Frekuensi Genset",
+        "standard": "50 Hz",
+        "method": "Visual Display",
+        "sample": "50 Hz"
+      },
+      {
+        "no": 4,
+        "point": "Tekanan Oli / Oil Pressure",
+        "standard": "3 - 5 Bar",
+        "method": "Visual Gauge",
+        "sample": "4 Bar"
+      },
+      {
+        "no": 5,
+        "point": "Temperatur Air Radiator",
+        "standard": "75\u00b0C - 90\u00b0C",
+        "method": "Visual Gauge",
+        "sample": "80\u00b0C"
+      },
+      {
+        "no": 6,
+        "point": "Kondisi Suara & Getaran Mesin",
+        "standard": "Halus, Tidak ada bunyi abnormal",
+        "method": "Sensori / Auditori",
+        "sample": "Normal"
+      }
+    ]
+  },
+  {
+    "id": "tangki-solar-fc-4",
+    "no": 3,
+    "name": "Tangki Solar (FC 4)",
+    "checkpoints": [
+      {
+        "no": 1,
+        "point": "Tangki solar",
+        "standard": "Tidak Bocor",
+        "method": "Visual dan di coba",
+        "sample": "O"
+      },
+      {
+        "no": 2,
+        "point": "Leveling Solar",
+        "standard": "Mudah Terlihat",
+        "method": "Visual dan di coba",
+        "sample": "O"
+      },
+      {
+        "no": 3,
+        "point": "Motor Pompa Solar",
+        "standard": "Tidak Bocor",
+        "method": "Visual dan di coba",
+        "sample": "O"
+      },
+      {
+        "no": 4,
+        "point": "Pompa Solar",
+        "standard": "Normal ( berputar )",
+        "method": "Visual dan di coba",
+        "sample": "O"
+      },
+      {
+        "no": 5,
+        "point": "Pipa Saluran",
+        "standard": "Tidak Bocor",
+        "method": "Visual",
+        "sample": "O"
+      },
+      {
+        "no": 6,
+        "point": "Tombol ON - OFF",
+        "standard": "Berfungsi",
+        "method": "Visual dan di coba",
+        "sample": "O"
+      },
+      {
+        "no": 7,
+        "point": "Volume Solar",
+        "standard": "Diatas 60 liter",
+        "method": "Visual",
+        "sample": "65 ltr"
+      }
+    ]
+  },
+  {
+    "id": "genset-fc-5",
+    "no": 4,
+    "name": "GENSET (FC 5)",
+    "checkpoints": [
+      {
+        "no": 1,
+        "point": "Temperatur Ruangan",
+        "standard": "40\u2070C",
+        "method": "Visual",
+        "sample": "38\u2070C"
+      },
+      {
+        "no": 2,
+        "point": "Air Accu",
+        "standard": "Indicator Warna Hijau",
+        "method": "Visual",
+        "sample": "H"
+      },
+      {
+        "no": 3,
+        "point": "Air radiator",
+        "standard": "Antara up dan low level",
+        "method": "Visual",
+        "sample": "O"
+      },
+      {
+        "no": 4,
+        "point": "Oli mesin",
+        "standard": "Antara up dan low level",
+        "method": "Visual",
+        "sample": "O"
+      },
+      {
+        "no": 5,
+        "point": "Cek Kebocoran Oli Mesin",
+        "standard": "Tidak ada bocor",
+        "method": "Visual",
+        "sample": "O"
+      },
+      {
+        "no": 6,
+        "point": "Cek Kebocoran Filter Solar",
+        "standard": "Tidak ada bocor",
+        "method": "Visual",
+        "sample": "O"
+      },
+      {
+        "no": 7,
+        "point": "V-Belt Alternator",
+        "standard": "Tidak Aus dan Kendor",
+        "method": "Visual",
+        "sample": "O"
+      },
+      {
+        "no": 8,
+        "point": "V-Belt Utama",
+        "standard": "Tidak Aus dan Kendor",
+        "method": "Visual",
+        "sample": "O"
+      },
+      {
+        "no": 9,
+        "point": "Running hours",
+        "standard": "-",
+        "method": "Visual",
+        "sample": "O"
+      },
+      {
+        "no": 10,
+        "point": "Marking & kekencangan Pull Accu",
+        "standard": "Garis marking di pull tidak berubah",
+        "method": "Visual & di goyang",
+        "sample": "O"
+      },
+      {
+        "no": 11,
+        "point": "Kondisi Insulation Battery cable",
+        "standard": "Tidak ada goresan",
+        "method": "Visual & di raba",
+        "sample": "O"
+      },
+      {
+        "no": 12,
+        "point": "Suhu battery Cable",
+        "standard": "Standart 29\u02da - 31\u02da",
+        "method": "Pakai deteksi panas",
+        "sample": "30\u02da"
+      },
+      {
+        "no": 13,
+        "point": "Suhu Pull aki",
+        "standard": "Standart 29\u02da - 31\u02da",
+        "method": "Pakai deteksi panas",
+        "sample": "30\u02da"
+      },
+      {
+        "no": 14,
+        "point": "Tegangan aki 1",
+        "standard": "Min 12 volt",
+        "method": "Pakai AVO meter",
+        "sample": "12 V"
+      },
+      {
+        "no": 15,
+        "point": "Tegangan aki 2",
+        "standard": "Min 12 volt",
+        "method": "Pakai AVO meter",
+        "sample": "12 V"
+      },
+      {
+        "no": 16,
+        "point": "Kebersihan Genset",
+        "standard": "Tidak ada benda asing",
+        "method": "Visual",
+        "sample": "O"
+      }
+    ]
+  },
+  {
+    "id": "main-panel-fc-3",
+    "no": 5,
+    "name": "Main Panel (FC 3)",
+    "checkpoints": [
+      {
+        "no": 1,
+        "point": "Temperatur Ruangan",
+        "standard": "40\u2070C",
+        "method": "Visual",
+        "sample": "38\u2070C"
+      },
+      {
+        "no": 2,
+        "point": "Power factor (capacitor)",
+        "standard": "0.80-0.99 (otomatis)",
+        "method": "Visual",
+        "sample": "0,95"
+      },
+      {
+        "no": 3,
+        "point": "Arus (main ACB fase R)",
+        "standard": "950 A / 486 A",
+        "method": "Visual",
+        "sample": "650"
+      },
+      {
+        "no": 4,
+        "point": "Arus (main ACB fase S)",
+        "standard": "950 A / 486 A",
+        "method": "Visual",
+        "sample": "650"
+      },
+      {
+        "no": 5,
+        "point": "Arus (main ACB fase T)",
+        "standard": "950 A / 486 A",
+        "method": "Visual",
+        "sample": "650"
+      },
+      {
+        "no": 6,
+        "point": "Frekuensi (main ACB)",
+        "standard": "50 Hz",
+        "method": "Visual",
+        "sample": "50"
+      },
+      {
+        "no": 7,
+        "point": "Tegangan PLN                   (main ACB fase R-N)",
+        "standard": "220 V \u00b110%",
+        "method": "Visual",
+        "sample": "220"
+      },
+      {
+        "no": 8,
+        "point": "Tegangan PLN                   (main ACB fase S-N)",
+        "standard": "220 V \u00b110%",
+        "method": "Visual",
+        "sample": "220"
+      },
+      {
+        "no": 9,
+        "point": "Tegangan PLN                   (main ACB fase T-N)",
+        "standard": "220 V \u00b110%",
+        "method": "Visual",
+        "sample": "220"
+      },
+      {
+        "no": 10,
+        "point": "Tegangan PLN                   (main ACB fase R-S)",
+        "standard": "Min 370 V Max 415 V",
+        "method": "Visual",
+        "sample": "380"
+      },
+      {
+        "no": 11,
+        "point": "Tegangan PLN                   (main ACB fase S+T)",
+        "standard": "380 V \u00b110%",
+        "method": "Visual",
+        "sample": "380"
+      },
+      {
+        "no": 12,
+        "point": "Tegangan PLN                   (main ACB fase R-T)",
+        "standard": "380 V \u00b110%",
+        "method": "Visual",
+        "sample": "380"
+      },
+      {
+        "no": 13,
+        "point": "Kebersihan Ruangan",
+        "standard": "Tidak Kotor",
+        "method": "Visual",
+        "sample": "O"
+      }
+    ]
+  },
+  {
+    "id": "travo-fc-3",
+    "no": 6,
+    "name": "Travo (FC 3)",
+    "checkpoints": [
+      {
+        "no": 1,
+        "point": "Temperatur Ruangan",
+        "standard": "40\u2070C",
+        "method": "Visual",
+        "sample": "38\u2070C"
+      },
+      {
+        "no": 2,
+        "point": "Posisi pelampung besar",
+        "standard": "Atas",
+        "method": "Visual",
+        "sample": "O"
+      },
+      {
+        "no": 3,
+        "point": "Posisi pelampung kecil",
+        "standard": "Atas",
+        "method": "Visual",
+        "sample": "O"
+      },
+      {
+        "no": 4,
+        "point": "Lampu indikator incoming R",
+        "standard": "ON",
+        "method": "Visual",
+        "sample": "O"
+      },
+      {
+        "no": 5,
+        "point": "Lampu indikator incoming S",
+        "standard": "ON",
+        "method": "Visual",
+        "sample": "O"
+      },
+      {
+        "no": 6,
+        "point": "Lampu indikator incoming T",
+        "standard": "ON",
+        "method": "Visual",
+        "sample": "O"
+      },
+      {
+        "no": 7,
+        "point": "Lampu indikator outgoing R",
+        "standard": "ON",
+        "method": "Visual",
+        "sample": "O"
+      },
+      {
+        "no": 8,
+        "point": "Lampu indikator outgoing S",
+        "standard": "ON",
+        "method": "Visual",
+        "sample": "O"
+      },
+      {
+        "no": 9,
+        "point": "Lampu indikator outgoing T",
+        "standard": "ON",
+        "method": "Visual",
+        "sample": "O"
+      },
+      {
+        "no": 10,
+        "point": "Temperatur Transformer",
+        "standard": "Max 80\u00b0C",
+        "method": "Visual",
+        "sample": "45"
+      },
+      {
+        "no": 11,
+        "point": "Kebocoran Transformer",
+        "standard": "P / B / T",
+        "method": "Visual",
+        "sample": "P"
+      },
+      {
+        "no": 12,
+        "point": "Kebersihan sekitar Trafo",
+        "standard": "Visual ( \u221a )",
+        "method": "Visual",
+        "sample": "O"
+      }
+    ]
+  },
+  {
+    "id": "air-dryer-type-arx90hl-orion",
+    "no": 7,
+    "name": "Air Dryer Type ARX90HL (ORION)",
+    "checkpoints": [
+      {
+        "no": 1,
+        "point": "Unit Air Dryer",
+        "standard": "Tidak ada suara Abnormal",
+        "method": "Visual",
+        "sample": "O"
+      },
+      {
+        "no": 2,
+        "point": "Tombol ON dan OFF",
+        "standard": "Normal bisa pakai",
+        "method": "Visual",
+        "sample": "O"
+      },
+      {
+        "no": 3,
+        "point": "Lampu Indikator ON",
+        "standard": "Lampu menyala",
+        "method": "Visual",
+        "sample": "O"
+      },
+      {
+        "no": 4,
+        "point": "Air Pressure",
+        "standard": "0.5-0.7 Mpa",
+        "method": "Visual",
+        "sample": "0.65"
+      },
+      {
+        "no": 5,
+        "point": "EVAP Pressure",
+        "standard": "0.7-1.15 Mpa",
+        "method": "Visual",
+        "sample": "0.6"
+      },
+      {
+        "no": 6,
+        "point": "Kebersihan Filter Kondensor",
+        "standard": "Bersih tidak berdebu",
+        "method": "Visual",
+        "sample": "O"
+      },
+      {
+        "no": 7,
+        "point": "Auto Drain air kondensasi",
+        "standard": "Berfungsi normal",
+        "method": "Visual",
+        "sample": "O"
+      },
+      {
+        "no": 8,
+        "point": "Tenisi",
+        "standard": "SIGN+NIK",
+        "method": "Daily",
+        "sample": "O"
+      }
+    ]
+  },
+  {
+    "id": "air-dryer-fx14-fc-4",
+    "no": 8,
+    "name": "Air Dryer FX14 (FC 4)",
+    "checkpoints": [
+      {
+        "no": 1,
+        "point": "Check indikator filter udara",
+        "standard": "H = Hijau / K = Kuning",
+        "method": "Visual",
+        "sample": "H / K"
+      },
+      {
+        "no": 2,
+        "point": "Buang air dari valve manual",
+        "standard": "Lancar",
+        "method": "Visual",
+        "sample": "O"
+      },
+      {
+        "no": 3,
+        "point": "Suhu pada Temperatur",
+        "standard": "Max       \u00baC",
+        "method": "Visual",
+        "sample": "20\u00baC"
+      },
+      {
+        "no": 4,
+        "point": "Extra Fan",
+        "standard": "Berputar / Tidak.",
+        "method": "Visual",
+        "sample": "O"
+      },
+      {
+        "no": 5,
+        "point": "Kebersihan Dryer",
+        "standard": "Visual ( \u221a )",
+        "method": "Visual",
+        "sample": "O"
+      }
+    ]
+  },
+  {
+    "id": "booster-pump",
+    "no": 9,
+    "name": "Booster Pump",
+    "checkpoints": [
+      {
+        "no": 1,
+        "point": "Motor Pump 1",
+        "standard": "On Running ( suara normal )",
+        "method": "Visual dan di coba",
+        "sample": "O"
+      },
+      {
+        "no": 2,
+        "point": "Motor Pump 2",
+        "standard": "On Running ( suara normal )",
+        "method": "Visual dan di coba",
+        "sample": "O"
+      },
+      {
+        "no": 3,
+        "point": "Motor Pump 3",
+        "standard": "On Running ( suara normal )",
+        "method": "Visual dan di coba",
+        "sample": "O"
+      },
+      {
+        "no": 4,
+        "point": "Nilai Pressure Gauge ( Utama )",
+        "standard": "Cek Visual",
+        "method": "Visual",
+        "sample": "3 Bar"
+      },
+      {
+        "no": 5,
+        "point": "Panel Booster Pump",
+        "standard": "fungsi dan kebersihan",
+        "method": "Visual & di coba",
+        "sample": "O"
+      },
+      {
+        "no": 6,
+        "point": "Kebersihan Boster Pump ( All )",
+        "standard": "Tidak Banyak Karat",
+        "method": "Visual",
+        "sample": "O"
+      },
+      {
+        "no": 7,
+        "point": "Boster pump yang beroperasi",
+        "standard": "2 pompa",
+        "method": "Visual",
+        "sample": "2+3"
+      },
+      {
+        "no": 8,
+        "point": "Kebersihan Ruangan",
+        "standard": "Tidak Kotor",
+        "method": "Visual",
+        "sample": "O"
+      }
+    ]
+  },
+  {
+    "id": "kontaktor-comp-fc-2",
+    "no": 10,
+    "name": "Kontaktor Comp (FC 2)",
+    "checkpoints": [
+      {
+        "no": 1,
+        "point": "Contactor K21",
+        "standard": "Max 85\u2070C",
+        "method": "Visual",
+        "sample": "70\u2070C"
+      },
+      {
+        "no": 2,
+        "point": "Overload F21",
+        "standard": "Max 85\u2070C",
+        "method": "Visual",
+        "sample": "70\u2070C"
+      },
+      {
+        "no": 3,
+        "point": "Contactor K23",
+        "standard": "Max 85\u2070C",
+        "method": "Visual",
+        "sample": "70\u2070C"
+      },
+      {
+        "no": 4,
+        "point": "Contactor K22",
+        "standard": "Max 85\u2070C",
+        "method": "Visual",
+        "sample": "70\u2070C"
+      },
+      {
+        "no": 5,
+        "point": "AMPERE MOTOR SCREW",
+        "standard": "U = 70 A",
+        "method": "Menggunakan  AVO meter",
+        "sample": "70 A"
+      },
+      {
+        "no": 6,
+        "point": "AMPERE FAN BLOWER",
+        "standard": "U = 5 A",
+        "method": "Menggunakan  AVO meter",
+        "sample": "5 A"
+      }
+    ]
+  },
+  {
+    "id": "compresssor-fix-3-fc-1",
+    "no": 11,
+    "name": "Compresssor Fix 3 (FC 1)",
+    "checkpoints": [
+      {
+        "no": 1,
+        "point": "Temperatur Ruangan",
+        "standard": "40\u2070C",
+        "method": "Visual",
+        "sample": "38\u2070C"
+      },
+      {
+        "no": 2,
+        "point": "Check level oli comp.",
+        "standard": "Max / Orange",
+        "method": "Visual",
+        "sample": "O"
+      },
+      {
+        "no": 3,
+        "point": "Check kebocoran oli",
+        "standard": "Tdk ada kebocoran",
+        "method": "Visual",
+        "sample": "O"
+      },
+      {
+        "no": 4,
+        "point": "Buang air dari Valve manual",
+        "standard": "Lancar",
+        "method": "Visual dan Di coba",
+        "sample": "O"
+      },
+      {
+        "no": 5,
+        "point": "Valve dan Hose Manual Drain",
+        "standard": "Tidak Bocor",
+        "method": "Visual dan Di coba",
+        "sample": "O"
+      },
+      {
+        "no": 6,
+        "point": "Suhu Compressor saat itu",
+        "standard": "Max 110\u00baC",
+        "method": "Visual",
+        "sample": "83 \u030aC"
+      },
+      {
+        "no": 7,
+        "point": "Running hours",
+        "standard": "Cek Actual Modul",
+        "method": "Visual",
+        "sample": "9999"
+      },
+      {
+        "no": 8,
+        "point": "Indicator Filter Udara",
+        "standard": "Max= 100%   Min= 20%",
+        "method": "Visual",
+        "sample": "70%"
+      },
+      {
+        "no": 9,
+        "point": "DP oil separator",
+        "standard": "Max 0.8",
+        "method": "Visual",
+        "sample": "0,2"
+      },
+      {
+        "no": 10,
+        "point": "Filter Fan In dan Out ( VSD )",
+        "standard": "Tidak Kotor",
+        "method": "Di lepas",
+        "sample": "O"
+      },
+      {
+        "no": 11,
+        "point": "Kebersihan Ruangan",
+        "standard": "Tidak Kotor",
+        "method": "Visual",
+        "sample": "O"
+      }
+    ]
+  },
+  {
+    "id": "compressor-4",
+    "no": 12,
+    "name": "Compressor (4)",
+    "checkpoints": [
+      {
+        "no": 1,
+        "point": "IN EPCOS ( FILTER )",
+        "standard": "Cable",
+        "method": "50.0\u00baC ~ 60.0\u00baC",
+        "sample": "52.0\u00baC"
+      },
+      {
+        "no": 2,
+        "point": "OUT  FAN RADIAL",
+        "standard": "Cable",
+        "method": "50.0\u00baC ~ 60.0\u00baC",
+        "sample": "52.0\u00baC"
+      },
+      {
+        "no": 3,
+        "point": "IN  INVERTER",
+        "standard": "Cable",
+        "method": "50.0\u00baC ~ 60.0\u00baC",
+        "sample": "52.0\u00baC"
+      },
+      {
+        "no": 4,
+        "point": "OUT  INVERTER",
+        "standard": "Cable",
+        "method": "50.0\u00baC ~ 60.0\u00baC",
+        "sample": "52.0\u00baC"
+      },
+      {
+        "no": 5,
+        "point": "CONTACTOR FAN RADIAL",
+        "standard": "Cable",
+        "method": "50.0\u00baC ~ 60.0\u00baC",
+        "sample": "52.0\u00baC"
+      },
+      {
+        "no": 6,
+        "point": "COOLING FAN INVERTER",
+        "standard": "",
+        "method": "Tidak Kotor",
+        "sample": "O"
+      }
+    ]
+  },
+  {
+    "id": "compresssor-vsd-1-4-5-fc-4",
+    "no": 13,
+    "name": "Compresssor Vsd,1,4,5 (FC 4)",
+    "checkpoints": [
+      {
+        "no": 1,
+        "point": "Temperatur Ruangan",
+        "standard": "40\u2070C",
+        "method": "Visual",
+        "sample": "38\u2070C"
+      },
+      {
+        "no": 2,
+        "point": "Check level oli comp.",
+        "standard": "Max / Orange",
+        "method": "Visual",
+        "sample": "O"
+      },
+      {
+        "no": 3,
+        "point": "Check kebocoran oli",
+        "standard": "Tdk ada kebocoran",
+        "method": "Visual",
+        "sample": "O"
+      },
+      {
+        "no": 4,
+        "point": "Buang air dari Valve manual",
+        "standard": "Lancar",
+        "method": "Visual dan Di coba",
+        "sample": "O"
+      },
+      {
+        "no": 5,
+        "point": "Valve dan Hose Manual Drain",
+        "standard": "Tidak Bocor",
+        "method": "Visual dan Di coba",
+        "sample": "O"
+      },
+      {
+        "no": 6,
+        "point": "Suhu Compressor saat itu",
+        "standard": "Max 110\u00baC",
+        "method": "Visual",
+        "sample": "83 \u030aC"
+      },
+      {
+        "no": 7,
+        "point": "Running hours",
+        "standard": "Cek Actual Modul",
+        "method": "Visual",
+        "sample": "9999"
+      },
+      {
+        "no": 8,
+        "point": "Indicator Filter Udara",
+        "standard": "Max= 50%   Min= 20%",
+        "method": "Visual",
+        "sample": "40%"
+      },
+      {
+        "no": 9,
+        "point": "DP oil separator",
+        "standard": "Max 0.8",
+        "method": "Visual",
+        "sample": "0,2"
+      },
+      {
+        "no": 10,
+        "point": "Filter Fan In dan Out ( VSD )",
+        "standard": "Tidak Kotor",
+        "method": "Di lepas",
+        "sample": "O"
+      },
+      {
+        "no": 11,
+        "point": "Kebersihan Ruangan",
+        "standard": "Tidak Kotor",
+        "method": "Visual",
+        "sample": "O"
+      }
+    ]
+  }
+]

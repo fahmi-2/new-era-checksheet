@@ -56,6 +56,7 @@ const CHECKSHEET_LABELS: Record<string, string> = {
   "tg-listrik": "Tangga Listrik",
   panel: "Panel Listrik",
   "form-inspeksi-stop-kontak": "Stop Kontak",
+  "power-house": "Power House",
   "e-checksheet-apd": "APD",
   "inf-jalan": "Inf. Jalan",
   "inspeksi-apd": "Inspeksi APD",

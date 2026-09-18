@@ -111,6 +111,24 @@
           GROUP BY pic
           ORDER BY count DESC LIMIT 10`, P, 'electrical'),
 
+        'stop-kontak': () => run(`
+          SELECT pic AS name, COUNT(DISTINCT id) AS count
+          FROM electrical_inspections
+          WHERE tanggal BETWEEN $1 AND $2
+            AND type = 'stop-kontak'
+            AND pic IS NOT NULL AND pic <> ''
+          GROUP BY pic
+          ORDER BY count DESC LIMIT 10`, P, 'stop-kontak'),
+
+        'instalasi-listrik': () => run(`
+          SELECT pic AS name, COUNT(DISTINCT id) AS count
+          FROM electrical_inspections
+          WHERE tanggal BETWEEN $1 AND $2
+            AND type = 'instalasi-listrik'
+            AND pic IS NOT NULL AND pic <> ''
+          GROUP BY pic
+          ORDER BY count DESC LIMIT 10`, P, 'instalasi-listrik'),
+
         // ✅ checklist_date — sudah benar
         'exit-lamp': () => run(`
           SELECT checker_name AS name, COUNT(DISTINCT id) AS count

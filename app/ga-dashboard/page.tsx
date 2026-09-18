@@ -3,6 +3,7 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import Link from 'next/link';
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -80,6 +81,8 @@ interface DashboardStats {
   total: number;
   completed: number;
   pending: number;
+  repaired: number;
+  unrepaired: number;
   completionRate: string;
 }
 
@@ -107,9 +110,10 @@ export default function GADashboard() {
   const itemsPerPage = 10;
 
   const [detailModalOpen, setDetailModalOpen] = useState(false);
-  const [detailModalType, setDetailModalType] = useState<'total' | 'ok' | 'ng'>('total');
+  const [detailModalType, setDetailModalType] = useState<'total' | 'ok' | 'ng' | 'repaired' | 'unrepaired'>('total');
   const [detailData, setDetailData] = useState<DashboardData['historyData']>([]);
   const [isDetailLoading, setIsDetailLoading] = useState(false);
+  const [previewImage, setPreviewImage] = useState<string | null>(null);
 
   // ── Load data ──────────────────────────────────────────────
   const loadDashboardData = useCallback(async () => {
@@ -155,7 +159,7 @@ export default function GADashboard() {
     } catch {
       setError('Gagal memuat data. Silakan refresh halaman.');
       setDashboardData({
-        stats: { total: 0, completed: 0, pending: 0, completionRate: '0.0' },
+        stats: { total: 0, completed: 0, pending: 0, repaired: 0, unrepaired: 0, completionRate: '0.0' },
         trendData: [], distributionData: [], topUsers: [], historyData: [],
       });
     } finally {
@@ -208,7 +212,7 @@ export default function GADashboard() {
 
   // ── Memos ──────────────────────────────────────────────────
   const stats = useMemo<DashboardStats>(
-    () => dashboardData?.stats || { total: 0, completed: 0, pending: 0, completionRate: '0.0' },
+    () => dashboardData?.stats || { total: 0, completed: 0, pending: 0, repaired: 0, unrepaired: 0, completionRate: '0.0' },
     [dashboardData]
   );
 
@@ -280,7 +284,7 @@ export default function GADashboard() {
     setActiveMonth(m); setActiveYear(y); setCurrentPage(1);
   };
 
-  const openDetailModal = async (type: 'total' | 'ok' | 'ng') => {
+  const openDetailModal = async (type: 'total' | 'ok' | 'ng' | 'repaired' | 'unrepaired') => {
     setDetailModalType(type);
     setDetailModalOpen(true);
     setIsDetailLoading(true);
@@ -293,7 +297,7 @@ export default function GADashboard() {
       const dateTo   = lastDay.toISOString().split('T')[0];
 
       const res = await fetchHistory(
-        '/e-checksheet-ga/analytics/history', 
+        '/analytics/history', 
         form.slug, 
         undefined, 
         9999,
@@ -305,6 +309,8 @@ export default function GADashboard() {
       let filtered = res.data || [];
       if (type === 'ok') filtered = filtered.filter(item => item.status === 'OK' && item.ngCount === 0);
       if (type === 'ng') filtered = filtered.filter(item => item.ngCount > 0 || item.status === 'NG');
+      if (type === 'repaired') filtered = filtered.filter(item => (item.repairedCount ?? 0) > 0);
+      if (type === 'unrepaired') filtered = filtered.filter(item => (item.unrepairedCount ?? (item.ngCount > 0 ? item.ngCount : 0)) > 0);
       
       setDetailData(filtered);
     } catch (err) {
@@ -315,25 +321,42 @@ export default function GADashboard() {
     }
   };
 
+  const getDetailModalTitle = () => {
+    switch (detailModalType) {
+      case 'total': return 'Total Inspeksi';
+      case 'ok': return 'Item OK';
+      case 'ng': return 'Item NG (Ketidaksesuaian)';
+      case 'repaired': return 'Item NG yang Sudah Diperbaiki';
+      case 'unrepaired': return 'Item NG Menunggu Perbaikan';
+      default: return 'Detail Inspeksi';
+    }
+  };
+
   const downloadDetailPDF = () => {
     const doc = new jsPDF();
     const formName = findForm(selectedForm).label.replace(/[^a-zA-Z0-9 ]/g, "").trim();
-    const title = `Detail ${detailModalType === 'total' ? 'Total Inspeksi' : detailModalType === 'ok' ? 'Item OK' : 'Item NG'} - ${formName}`;
+    const title = `Detail ${getDetailModalTitle()} - ${formName}`;
     
     doc.setFontSize(14);
     doc.text(title, 14, 15);
     doc.setFontSize(10);
     doc.text(`Periode: ${MONTHS[activeMonth]} ${activeYear}`, 14, 22);
 
-    const tableColumn = ["No", "Waktu", "Area", "Status", "Item NG", "PIC"];
-    const tableRows = detailData.map((item, i) => [
-      i + 1,
-      formatDateTime(item.filledAt),
-      item.area,
-      item.status,
-      item.ngCount,
-      item.filledBy || '-'
-    ]);
+    const tableColumn = ["No", "Waktu", "Area", "Status", "Item NG", "Status Perbaikan", "PIC"];
+    const tableRows = detailData.map((item, i) => {
+      const repInfo = item.ngCount > 0 
+        ? `${item.repairedCount || 0} Diperbaiki / ${item.unrepairedCount ?? item.ngCount} Pending` 
+        : 'Normal';
+      return [
+        i + 1,
+        formatDateTime(item.filledAt),
+        item.area,
+        item.status,
+        item.ngCount,
+        repInfo,
+        item.filledBy || '-'
+      ];
+    });
 
     autoTable(doc, {
       head: [tableColumn],
@@ -459,22 +482,141 @@ export default function GADashboard() {
 
         /* ── STATS GRID ── */
         .db-stats {
-          display: grid; grid-template-columns: repeat(4, 1fr);
-          gap: 16px; margin-bottom: 20px;
+          display: grid; grid-template-columns: repeat(6, 1fr);
+          gap: 14px; margin-bottom: 20px;
         }
         .db-stat {
-          background: #fff; border-radius: var(--db-radius); padding: 20px 16px;
+          background: #fff; border-radius: var(--db-radius); padding: 18px 14px;
           text-align: center; box-shadow: var(--db-shadow);
           transition: transform .2s, box-shadow .2s;
+          display: flex; flex-direction: column; justify-content: space-between;
         }
         .db-stat:hover { transform: translateY(-3px); box-shadow: 0 8px 24px rgba(0,0,0,.12); }
-        .db-stat--blue   { background: linear-gradient(135deg,#3b82f6,#2563eb); color:#fff; }
-        .db-stat--green  { background: linear-gradient(135deg,#10b981,#059669); color:#fff; }
-        .db-stat--amber  { background: linear-gradient(135deg,#f59e0b,#d97706); color:#fff; }
-        .db-stat--violet { background: linear-gradient(135deg,#6366f1,#4f46e5); color:#fff; }
-        .db-stat-icon { font-size: 2rem; margin-bottom: 8px; }
-        .db-stat-val  { font-size: clamp(22px,5vw,32px); font-weight: 800; line-height: 1; margin-bottom: 6px; }
+        .db-stat--blue     { background: linear-gradient(135deg,#3b82f6,#2563eb); color:#fff; }
+        .db-stat--green    { background: linear-gradient(135deg,#10b981,#059669); color:#fff; }
+        .db-stat--amber    { background: linear-gradient(135deg,#f59e0b,#d97706); color:#fff; }
+        .db-stat--repaired { background: linear-gradient(135deg,#059669,#047857); color:#fff; }
+        .db-stat--pending  { background: linear-gradient(135deg,#ef4444,#dc2626); color:#fff; }
+        .db-stat--violet   { background: linear-gradient(135deg,#6366f1,#4f46e5); color:#fff; }
+        .db-stat-icon { font-size: 1.8rem; margin-bottom: 6px; }
+        .db-stat-val  { font-size: clamp(20px,4vw,28px); font-weight: 800; line-height: 1; margin-bottom: 6px; }
         .db-stat-lbl  { font-size: 12px; font-weight: 500; opacity: .92; }
+
+        /* ── ACTION BUTTONS & NG DETAIL ACCORDION ── */
+        .db-action-btn {
+          display: inline-flex; align-items: center; gap: 4px;
+          padding: 5px 10px; border-radius: 6px; font-weight: 600; font-size: 11px;
+          text-decoration: none; cursor: pointer; transition: all .2s;
+          border: none; white-space: nowrap;
+        }
+        .db-action-edit {
+          background: #eff6ff; color: #1d4ed8; border: 1px solid #bfdbfe;
+        }
+        .db-action-edit:hover {
+          background: #dbeafe; color: #1e40af; transform: translateY(-1px);
+        }
+        .db-action-repaired {
+          background: #f0fdf4; color: #166534; border: 1px solid #bbf7d0;
+        }
+
+        .db-ng-card {
+          border: 1px solid #fee2e2; background: #fff; border-radius: 10px;
+          padding: 14px; margin-bottom: 12px; box-shadow: 0 1px 4px rgba(220,38,38,0.06);
+        }
+        .db-ng-card-header {
+          display: flex; justify-content: space-between; align-items: flex-start;
+          gap: 10px; margin-bottom: 10px; border-bottom: 1px dashed #fecaca; padding-bottom: 8px;
+        }
+        .db-ng-item-badge {
+          display: inline-block; background: #fef2f2; color: #991b1b;
+          font-weight: 700; font-size: 11.5px; padding: 3px 8px; border-radius: 6px; border: 1px solid #fecaca;
+        }
+        .db-repair-pill {
+          display: inline-flex; align-items: center; gap: 4px;
+          padding: 3px 9px; border-radius: 12px; font-size: 11px; font-weight: 700;
+        }
+        .db-repair-pill--ok { background: #dcfce7; color: #166534; border: 1px solid #86efac; }
+        .db-repair-pill--pending { background: #fef3c7; color: #92400e; border: 1px solid #fde68a; }
+
+        .db-modal-ng-grid {
+          display: grid; grid-template-columns: repeat(auto-fill, minmax(290px, 1fr)); gap: 10px;
+          margin-top: 8px; background: #f8fafc; padding: 12px; border-radius: 8px; font-size: 12px;
+        }
+        .db-modal-ng-box {
+          border-left: 4px solid #ef4444; background: #fff; padding: 10px 12px; border-radius: 6px;
+          box-shadow: 0 1px 3px rgba(0,0,0,0.05); display: flex; flex-direction: column; gap: 4px;
+        }
+        .db-modal-ng-box.is-fixed {
+          border-left-color: #10b981;
+        }
+        .db-ng-idx-badge {
+          background: #fee2e2; color: #b91c1c; font-weight: 700; font-size: 10.5px;
+          padding: 2px 6px; border-radius: 4px; border: 1px solid #fecaca;
+        }
+        .db-modal-ng-box.is-fixed .db-ng-idx-badge {
+          background: #dcfce7; color: #15803d; border-color: #bbf7d0;
+        }
+        .db-ng-desc-row {
+          display: flex; gap: 6px; align-items: flex-start; font-size: 12px; line-height: 1.4;
+        }
+        .db-ng-desc-tag {
+          font-weight: 700; flex-shrink: 0; min-width: 58px; font-size: 11.5px;
+        }
+        .db-ng-desc-finding { color: #dc2626; }
+        .db-ng-desc-finding .db-ng-desc-tag { color: #b91c1c; }
+        .db-ng-desc-action { color: #15803d; }
+        .db-ng-desc-action .db-ng-desc-tag { color: #166534; }
+        .db-ng-desc-empty { color: #94a3b8; font-style: italic; }
+        .db-ng-desc-empty .db-ng-desc-tag { color: #64748b; font-style: normal; }
+
+        /* ── NG PHOTO THUMBNAIL & LIGHTBOX ── */
+        .db-ng-foto-wrap {
+          display: flex; align-items: center; gap: 10px; margin: 4px 0 6px;
+          padding: 6px 8px; background: #f1f5f9; border-radius: 6px; border: 1px solid #e2e8f0;
+        }
+        .db-ng-foto-thumb {
+          position: relative; width: 64px; height: 64px; border-radius: 6px; overflow: hidden;
+          cursor: pointer; border: 1.5px solid #cbd5e1; background: #000; flex-shrink: 0;
+          box-shadow: 0 1px 2px rgba(0,0,0,0.1); transition: transform .2s, box-shadow .2s;
+        }
+        .db-ng-foto-thumb:hover {
+          transform: scale(1.05); box-shadow: 0 4px 8px rgba(0,0,0,0.15); border-color: #3b82f6;
+        }
+        .db-ng-foto-thumb img {
+          width: 100%; height: 100%; object-fit: cover; display: block;
+        }
+        .db-ng-foto-zoom-hint {
+          position: absolute; bottom: 0; left: 0; right: 0; background: rgba(0,0,0,0.65);
+          color: #fff; font-size: 9px; text-align: center; padding: 1px 0; font-weight: 600;
+        }
+        .db-ng-foto-lbl {
+          font-size: 11px; font-weight: 600; color: #475569;
+        }
+
+        /* ── LIGHTBOX MODAL ── */
+        .db-lightbox-overlay {
+          position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+          background: rgba(0,0,0,0.85); z-index: 2000;
+          display: flex; align-items: center; justify-content: center;
+          padding: 20px; backdrop-filter: blur(4px);
+        }
+        .db-lightbox-content {
+          position: relative; max-width: 90vw; max-height: 90vh;
+          display: flex; flex-direction: column; align-items: center;
+        }
+        .db-lightbox-img {
+          max-width: 100%; max-height: 80vh; object-fit: contain;
+          border-radius: 8px; box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+          border: 2px solid rgba(255,255,255,0.2);
+        }
+        .db-lightbox-close {
+          position: absolute; top: -14px; right: -14px; width: 34px; height: 34px;
+          background: #ef4444; color: #fff; border: 2px solid #fff; border-radius: 50%;
+          font-size: 18px; font-weight: 700; cursor: pointer; display: flex;
+          align-items: center; justify-content: center; box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+          transition: transform .2s;
+        }
+        .db-lightbox-close:hover { transform: scale(1.1); background: #dc2626; }
 
         /* ── CHART BOXES ── */
         .db-chart-box {
@@ -646,7 +788,7 @@ export default function GADashboard() {
         /* ── RESPONSIVE ── */
         @media (max-width: 1200px) {
           .db-main { padding: 20px 16px 48px; }
-          .db-stats { grid-template-columns: repeat(2,1fr); gap: 12px; }
+          .db-stats { grid-template-columns: repeat(3,1fr); gap: 12px; }
         }
         @media (max-width: 1024px) {
           .db-charts-grid { grid-template-columns: 1fr; }
@@ -783,8 +925,20 @@ export default function GADashboard() {
                 <div className="db-stat db-stat--amber">
                   <div className="db-stat-icon">✗</div>
                   <div className="db-stat-val">{stats.pending}</div>
-                  <div className="db-stat-lbl">Item NG</div>
+                  <div className="db-stat-lbl">Item NG (Temuan)</div>
                   <button className="db-detail-btn" onClick={() => openDetailModal('ng')}>Lihat Detail</button>
+                </div>
+                <div className="db-stat db-stat--repaired">
+                  <div className="db-stat-icon">🛠️</div>
+                  <div className="db-stat-val">{stats.repaired}</div>
+                  <div className="db-stat-lbl">Sudah Diperbaiki</div>
+                  <button className="db-detail-btn" onClick={() => openDetailModal('repaired')}>Lihat Detail</button>
+                </div>
+                <div className="db-stat db-stat--pending">
+                  <div className="db-stat-icon">⏳</div>
+                  <div className="db-stat-val">{stats.unrepaired}</div>
+                  <div className="db-stat-lbl">Menunggu Perbaikan</div>
+                  <button className="db-detail-btn" onClick={() => openDetailModal('unrepaired')}>Lihat Detail</button>
                 </div>
                 <div className="db-stat db-stat--violet">
                   <div className="db-stat-icon">📊</div>
@@ -889,66 +1043,135 @@ export default function GADashboard() {
                           <tr>
                             <th style={{ width: 48, textAlign: 'center' }}>No</th>
                             <th>Waktu</th>
+                            <th>Kategori / Form</th>
                             <th>Area</th>
                             <th>Status</th>
                             <th>Item NG</th>
+                            <th>Status Perbaikan</th>
                             <th>PIC</th>
+                            <th style={{ textAlign: 'center' }}>Aksi / Perbaikan</th>
                           </tr>
                         </thead>
                         <tbody>
-                          {historyData.map((item, i) => (
-                            <tr key={i} className={item.ngCount > 0 ? 'db-row-warn' : ''}>
-                              <td className="db-td-no">{(currentPage - 1) * itemsPerPage + i + 1}</td>
-                              <td style={{ whiteSpace: 'nowrap' }}>{formatDateTime(item.filledAt)}</td>
-                              <td>{item.area}</td>
-                              <td>
-                                <span className={`db-badge ${item.status === 'OK' ? 'db-badge--ok' : 'db-badge--ng'}`}>
-                                  {item.status}
-                                </span>
-                              </td>
-                              <td>
-                                {item.ngCount > 0
-                                  ? <span className="db-ng-count">{item.ngCount} ⚠️</span>
-                                  : <span className="db-ok-count">0</span>}
-                              </td>
-                              <td>{item.filledBy || '–'}</td>
-                            </tr>
-                          ))}
+                          {historyData.map((item, i) => {
+                            const hasNG = item.ngCount > 0 || item.status === 'NG';
+                            const isRepaired = item.repairedCount !== undefined && item.repairedCount > 0 && (item.unrepairedCount === 0);
+                            const isPending = hasNG && !isRepaired;
+
+                            return (
+                              <tr key={i} className={hasNG ? 'db-row-warn' : ''}>
+                                <td className="db-td-no">{(currentPage - 1) * itemsPerPage + i + 1}</td>
+                                <td style={{ whiteSpace: 'nowrap' }}>{formatDateTime(item.filledAt)}</td>
+                                <td>
+                                  <span style={{ fontWeight: 600, color: '#1e293b' }}>
+                                    {item.category || currentFormLabel.replace(/^[^\s]+\s/, '')}
+                                  </span>
+                                </td>
+                                <td>{item.area}</td>
+                                <td>
+                                  <span className={`db-badge ${item.status === 'OK' ? 'db-badge--ok' : 'db-badge--ng'}`}>
+                                    {item.status}
+                                  </span>
+                                </td>
+                                <td>
+                                  {item.ngCount > 0
+                                    ? <span className="db-ng-count">{item.ngCount} ⚠️</span>
+                                    : <span className="db-ok-count">0</span>}
+                                </td>
+                                <td>
+                                  {!hasNG ? (
+                                    <span style={{ color: '#059669', fontSize: 12 }}>–</span>
+                                  ) : isRepaired ? (
+                                    <span className="db-repair-pill db-repair-pill--ok">
+                                      ✓ Sudah Diperbaiki ({item.repairedCount})
+                                    </span>
+                                  ) : (
+                                    <span className="db-repair-pill db-repair-pill--pending">
+                                      ⏳ Belum Diperbaiki {item.repairedCount ? `(${item.repairedCount}/${item.ngCount})` : ''}
+                                    </span>
+                                  )}
+                                </td>
+                                <td>{item.filledBy || '–'}</td>
+                                <td style={{ textAlign: 'center' }}>
+                                  {item.editUrl ? (
+                                    <Link
+                                      href={item.editUrl}
+                                      className="db-action-btn db-action-edit"
+                                      title="Buka form untuk perbaikan atau edit data"
+                                    >
+                                      ✏️ Perbaiki
+                                    </Link>
+                                  ) : (
+                                    <span style={{ color: '#94a3b8', fontSize: 12 }}>–</span>
+                                  )}
+                                </td>
+                              </tr>
+                            );
+                          })}
                         </tbody>
                       </table>
                     </div>
 
                     {/* Mobile Cards */}
                     <div className="db-history-cards">
-                      {historyData.map((item, i) => (
-                        <div key={i} className={`db-hcard ${item.ngCount > 0 ? 'warn' : ''}`}>
-                          <div className="db-hcard-top">
-                            <div className="db-hcard-no">{(currentPage - 1) * itemsPerPage + i + 1}</div>
-                            <div className="db-hcard-area">{item.area}</div>
-                            <span className={`db-badge ${item.status === 'OK' ? 'db-badge--ok' : 'db-badge--ng'}`}>
-                              {item.status}
-                            </span>
-                          </div>
-                          <div className="db-hcard-body">
-                            <div className="db-hcard-field">
-                              <div className="db-hcard-key">Waktu</div>
-                              <div className="db-hcard-val">{formatDateTime(item.filledAt)}</div>
+                      {historyData.map((item, i) => {
+                        const hasNG = item.ngCount > 0 || item.status === 'NG';
+                        const isRepaired = item.repairedCount !== undefined && item.repairedCount > 0 && (item.unrepairedCount === 0);
+
+                        return (
+                          <div key={i} className={`db-hcard ${hasNG ? 'warn' : ''}`}>
+                            <div className="db-hcard-top">
+                              <div className="db-hcard-no">{(currentPage - 1) * itemsPerPage + i + 1}</div>
+                              <div className="db-hcard-area">
+                                <div>{item.area}</div>
+                                <div style={{ fontSize: 11, color: '#64748b', fontWeight: 500 }}>
+                                  {item.category || currentFormLabel}
+                                </div>
+                              </div>
+                              <span className={`db-badge ${item.status === 'OK' ? 'db-badge--ok' : 'db-badge--ng'}`}>
+                                {item.status}
+                              </span>
                             </div>
-                            <div className="db-hcard-field">
-                              <div className="db-hcard-key">PIC</div>
-                              <div className="db-hcard-val">{item.filledBy || '–'}</div>
-                            </div>
-                            <div className="db-hcard-field">
-                              <div className="db-hcard-key">Item NG</div>
-                              <div className="db-hcard-val">
-                                {item.ngCount > 0
-                                  ? <span className="db-ng-count">{item.ngCount} ⚠️</span>
-                                  : <span className="db-ok-count">0</span>}
+                            <div className="db-hcard-body">
+                              <div className="db-hcard-field">
+                                <div className="db-hcard-key">Waktu</div>
+                                <div className="db-hcard-val">{formatDateTime(item.filledAt)}</div>
+                              </div>
+                              <div className="db-hcard-field">
+                                <div className="db-hcard-key">PIC</div>
+                                <div className="db-hcard-val">{item.filledBy || '–'}</div>
+                              </div>
+                              <div className="db-hcard-field">
+                                <div className="db-hcard-key">Item NG</div>
+                                <div className="db-hcard-val">
+                                  {item.ngCount > 0
+                                    ? <span className="db-ng-count">{item.ngCount} ⚠️</span>
+                                    : <span className="db-ok-count">0</span>}
+                                </div>
+                              </div>
+                              <div className="db-hcard-field">
+                                <div className="db-hcard-key">Perbaikan</div>
+                                <div className="db-hcard-val">
+                                  {!hasNG ? (
+                                    <span style={{ color: '#059669', fontSize: 11 }}>Normal</span>
+                                  ) : isRepaired ? (
+                                    <span style={{ color: '#166534', fontWeight: 600, fontSize: 11 }}>✓ Diperbaiki</span>
+                                  ) : (
+                                    <span style={{ color: '#b45309', fontWeight: 600, fontSize: 11 }}>⏳ Pending</span>
+                                  )}
+                                </div>
                               </div>
                             </div>
+                            {item.editUrl && (
+                              <div style={{ marginTop: 10, paddingTop: 8, borderTop: '1px solid #f1f5f9', textAlign: 'right' }}>
+                                <Link href={item.editUrl} className="db-action-btn db-action-edit">
+                                  ✏️ Buka Form Perbaikan
+                                </Link>
+                              </div>
+                            )}
                           </div>
-                        </div>
-                      ))}
+                        );
+                      })}
                     </div>
 
                     {/* Pagination */}
@@ -986,9 +1209,14 @@ export default function GADashboard() {
             <div className="db-modal-overlay" onClick={() => setDetailModalOpen(false)}>
               <div className="db-modal" onClick={e => e.stopPropagation()}>
                 <div className="db-modal-header">
-                  <h3 className="db-modal-title">
-                    Detail {detailModalType === 'total' ? 'Total Inspeksi' : detailModalType === 'ok' ? 'Item OK' : 'Item NG'}
-                  </h3>
+                  <div>
+                    <h3 className="db-modal-title">
+                      Detail {getDetailModalTitle()}
+                    </h3>
+                    <p style={{ margin: '3px 0 0', fontSize: 12, color: '#64748b' }}>
+                      {currentFormLabel} · {MONTHS[activeMonth]} {activeYear} ({detailData.length} records)
+                    </p>
+                  </div>
                   <button className="db-modal-close" onClick={() => setDetailModalOpen(false)}>&times;</button>
                 </div>
                 <div className="db-modal-body">
@@ -998,40 +1226,139 @@ export default function GADashboard() {
                       <p>Memuat detail...</p>
                     </div>
                   ) : detailData.length > 0 ? (
-                    <div className="db-table-scroll" style={{ maxHeight: '60vh', display: 'block' }}>
-                      <table className="db-table">
-                        <thead>
-                          <tr>
-                            <th style={{ width: 48, textAlign: 'center' }}>No</th>
-                            <th>Waktu</th>
-                            <th>Area</th>
-                            <th>Status</th>
-                            <th>Item NG</th>
-                            <th>PIC</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {detailData.map((item, i) => (
-                            <tr key={i} className={item.ngCount > 0 ? 'db-row-warn' : ''}>
-                              <td className="db-td-no">{i + 1}</td>
-                              <td style={{ whiteSpace: 'nowrap' }}>{formatDateTime(item.filledAt)}</td>
-                              <td>{item.area}</td>
-                              <td>
-                                <span className={`db-badge ${item.status === 'OK' ? 'db-badge--ok' : 'db-badge--ng'}`}>
-                                  {item.status}
+                    (detailModalType === 'ng' || detailModalType === 'repaired' || detailModalType === 'unrepaired') ? (
+                      /* TAMPILAN KHUSUS DETAIL NG DENGAN TEMUAN & PERBAIKAN */
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                        {detailData.map((item, i) => (
+                          <div key={i} className="db-ng-card">
+                            <div className="db-ng-card-header">
+                              <div>
+                                <span className="db-ng-item-badge">
+                                  #{i + 1} {item.category || currentFormLabel}
                                 </span>
-                              </td>
-                              <td>
-                                {item.ngCount > 0
-                                  ? <span className="db-ng-count">{item.ngCount} ⚠️</span>
-                                  : <span className="db-ok-count">0</span>}
-                              </td>
-                              <td>{item.filledBy || '–'}</td>
+                                <span style={{ marginLeft: 8, fontWeight: 700, color: '#1e293b', fontSize: 13 }}>
+                                  {item.area}
+                                </span>
+                                <div style={{ fontSize: 11.5, color: '#64748b', marginTop: 3 }}>
+                                  🗓️ {formatDateTime(item.filledAt)} · 👤 PIC: {item.filledBy || '–'}
+                                </div>
+                              </div>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                <span className="db-badge db-badge--ng">
+                                  {item.ngCount} Temuan NG
+                                </span>
+                                {item.editUrl && (
+                                  <Link href={item.editUrl} className="db-action-btn db-action-edit">
+                                    ✏️ Perbaiki di Form
+                                  </Link>
+                                )}
+                              </div>
+                            </div>
+
+                            {/* Daftar Item NG & Tindakan Perbaikan */}
+                            {item.ngDetails && item.ngDetails.length > 0 ? (
+                              <div className="db-modal-ng-grid">
+                                {item.ngDetails.map((ng, ngIdx) => (
+                                  <div key={ngIdx} className={`db-modal-ng-box ${ng.isRepaired ? 'is-fixed' : ''}`}>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 6, gap: 8 }}>
+                                      <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                                        <span className="db-ng-idx-badge">NG #{ngIdx + 1}</span>
+                                        <strong style={{ color: '#0f172a', fontSize: 12.5 }}>{ng.item}</strong>
+                                      </div>
+                                      <span className={`db-repair-pill ${ng.isRepaired ? 'db-repair-pill--ok' : 'db-repair-pill--pending'}`}>
+                                        {ng.isRepaired ? '✓ Diperbaiki' : '⏳ Belum Diperbaiki'}
+                                      </span>
+                                    </div>
+
+                                    {/* Thumbnail Foto Bukti Jika Ada */}
+                                    {ng.foto && (
+                                      <div className="db-ng-foto-wrap">
+                                        <div 
+                                          className="db-ng-foto-thumb" 
+                                          onClick={() => setPreviewImage(ng.foto || null)}
+                                          title="Klik untuk memperbesar gambar"
+                                        >
+                                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                                          <img src={ng.foto} alt="Foto Temuan NG" />
+                                          <div className="db-ng-foto-zoom-hint">🔍 Zoom</div>
+                                        </div>
+                                        <span className="db-ng-foto-lbl">📷 Bukti Kerusakan / Temuan</span>
+                                      </div>
+                                    )}
+
+                                    <div className="db-ng-desc-row db-ng-desc-finding">
+                                      <span className="db-ng-desc-tag">Temuan:</span>
+                                      <span>{ng.finding || 'Kerusakan komponen terdeteksi (NG)'}</span>
+                                    </div>
+
+                                    <div className={`db-ng-desc-row ${ng.correctiveAction ? 'db-ng-desc-action' : 'db-ng-desc-empty'}`}>
+                                      <span className="db-ng-desc-tag">Tindakan:</span>
+                                      <span>{ng.correctiveAction || 'Belum ada tindakan perbaikan yang diinput'}</span>
+                                    </div>
+
+                                    {ng.pic && (
+                                      <div style={{ fontSize: 11, color: '#64748b', marginTop: 4, display: 'flex', alignItems: 'center', gap: 4 }}>
+                                        <span>👤 PIC:</span> <strong>{ng.pic}</strong>
+                                      </div>
+                                    )}
+                                  </div>
+                                ))}
+                              </div>
+                            ) : (
+                              <div style={{ fontSize: 12, color: '#64748b', fontStyle: 'italic', padding: '6px 0' }}>
+                                Inspeksi berstatus NG ({item.ngCount} item). Klik &quot;Perbaiki di Form&quot; untuk melihat seluruh detail pemeriksaan dan input tindakan perbaikan.
+                              </div>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      /* TAMPILAN TABEL STANDAR UNTUK TOTAL / OK */
+                      <div className="db-table-scroll" style={{ maxHeight: '60vh', display: 'block' }}>
+                        <table className="db-table">
+                          <thead>
+                            <tr>
+                              <th style={{ width: 48, textAlign: 'center' }}>No</th>
+                              <th>Waktu</th>
+                              <th>Kategori</th>
+                              <th>Area</th>
+                              <th>Status</th>
+                              <th>Item NG</th>
+                              <th>PIC</th>
+                              <th style={{ textAlign: 'center' }}>Aksi</th>
                             </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
+                          </thead>
+                          <tbody>
+                            {detailData.map((item, i) => (
+                              <tr key={i} className={item.ngCount > 0 ? 'db-row-warn' : ''}>
+                                <td className="db-td-no">{i + 1}</td>
+                                <td style={{ whiteSpace: 'nowrap' }}>{formatDateTime(item.filledAt)}</td>
+                                <td>{item.category || currentFormLabel}</td>
+                                <td>{item.area}</td>
+                                <td>
+                                  <span className={`db-badge ${item.status === 'OK' ? 'db-badge--ok' : 'db-badge--ng'}`}>
+                                    {item.status}
+                                  </span>
+                                </td>
+                                <td>
+                                  {item.ngCount > 0
+                                    ? <span className="db-ng-count">{item.ngCount} ⚠️</span>
+                                    : <span className="db-ok-count">0</span>}
+                                </td>
+                                <td>{item.filledBy || '–'}</td>
+                                <td style={{ textAlign: 'center' }}>
+                                  {item.editUrl ? (
+                                    <Link href={item.editUrl} className="db-action-btn db-action-edit">
+                                      ✏️ Buka
+                                    </Link>
+                                  ) : '–'}
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    )
                   ) : (
                     <div className="db-empty">Tidak ada data untuk ditampilkan.</div>
                   )}
@@ -1044,6 +1371,30 @@ export default function GADashboard() {
                   >
                     📥 Download PDF
                   </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* ── Lightbox Preview Gambar NG ── */}
+          {previewImage && (
+            <div className="db-lightbox-overlay" onClick={() => setPreviewImage(null)}>
+              <div className="db-lightbox-content" onClick={(e) => e.stopPropagation()}>
+                <button 
+                  className="db-lightbox-close" 
+                  onClick={() => setPreviewImage(null)}
+                  title="Tutup Preview"
+                >
+                  ✕
+                </button>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img 
+                  src={previewImage} 
+                  alt="Preview Bukti Temuan NG" 
+                  className="db-lightbox-img" 
+                />
+                <div style={{ color: '#fff', marginTop: 10, fontSize: 13, fontWeight: 600 }}>
+                  📷 Bukti Temuan / Kerusakan NG dari Lapangan
                 </div>
               </div>
             </div>

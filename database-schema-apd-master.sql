@@ -1,9 +1,9 @@
 CREATE TABLE IF NOT EXISTS apd_master_labels (
     id SERIAL PRIMARY KEY,
-    label_type VARCHAR(32) NOT NULL,    -- 'dept' | 'proses' | 'area'
-    key VARCHAR(256) NOT NULL,          -- deptKey, prosesKey, atau 'prosesKey::subName::originalArea'
-    custom_name TEXT NOT NULL,          -- Nama baru yang dimasukkan user
-    updated_by VARCHAR(100),            -- NIK / Nama user yang mengubah
+    label_type VARCHAR(32) NOT NULL,    
+    key VARCHAR(256) NOT NULL,         
+    custom_name TEXT NOT NULL,          
+    updated_by VARCHAR(100),            
     updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT uq_apd_master_labels UNIQUE (label_type, key)
 );
@@ -30,7 +30,7 @@ CREATE TABLE IF NOT EXISTS apd_master_processes (
     proses_key VARCHAR(128) PRIMARY KEY,
     dept_key VARCHAR(64) NOT NULL REFERENCES apd_master_departments(dept_key) ON UPDATE CASCADE ON DELETE RESTRICT,
     proses_name VARCHAR(256) NOT NULL,
-    area_type VARCHAR(32) NOT NULL DEFAULT 'predefined-per-sub', -- 'predefined-per-sub' | 'cv' | 'none'
+    area_type VARCHAR(32) NOT NULL DEFAULT 'predefined-per-sub', 
     display_order INT NOT NULL DEFAULT 0,
     is_active BOOLEAN NOT NULL DEFAULT TRUE,
     created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -74,11 +74,11 @@ CREATE INDEX IF NOT EXISTS idx_apd_master_area_lookup ON apd_master_areas(proses
 
 CREATE TABLE IF NOT EXISTS apd_master_change_logs (
     id SERIAL PRIMARY KEY,
-    label_type VARCHAR(32) NOT NULL,    -- 'dept' | 'proses' | 'area'
+    label_type VARCHAR(32) NOT NULL,    
     item_key VARCHAR(256) NOT NULL,
     old_name TEXT,
     new_name TEXT NOT NULL,
-    action_type VARCHAR(32) NOT NULL,   -- 'RENAME' | 'RESET' | 'CREATE' | 'DEACTIVATE'
+    action_type VARCHAR(32) NOT NULL,  
     changed_by VARCHAR(100),
     changed_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
@@ -406,20 +406,4 @@ JOIN apd_master_sub_processes s
  AND s.sub_name = t.sub_name
 ON CONFLICT (proses_key, sub_name, area_name) DO UPDATE 
 SET display_order = EXCLUDED.display_order;
-
--- ==============================================================================
--- 7. TABEL CUSTOM MASTER ITEMS (DIPAKAI API UNTUK ITEM YANG DITAMBAHKAN USER)
--- ==============================================================================
-CREATE TABLE IF NOT EXISTS apd_custom_master_items (
-    id SERIAL PRIMARY KEY,
-    item_type VARCHAR(32) NOT NULL,    -- 'dept' | 'proses' | 'sub' | 'area'
-    parent_key VARCHAR(256),           -- deptKey untuk proses, prosesKey untuk sub, 'prosesKey::subName' untuk area
-    item_key VARCHAR(256) NOT NULL,    -- identifier unik
-    item_name TEXT NOT NULL,           -- nama item
-    area_type VARCHAR(32) DEFAULT 'predefined-per-sub',
-    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    CONSTRAINT uq_apd_custom_item UNIQUE (item_type, item_key)
-);
-
-CREATE INDEX IF NOT EXISTS idx_apd_custom_parent ON apd_custom_master_items(item_type, parent_key);
 

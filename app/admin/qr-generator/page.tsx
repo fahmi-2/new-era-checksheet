@@ -398,6 +398,11 @@ function generateTgListrikQR(): QRConfig[] {
 function generateLiftBarangPreventifQR(): QRConfig[] {
   return LIFT_BARANG_SUB_TYPES.map(subType => ({ type: "Lift Preventif", title: `Lift Barang ${subType.charAt(0).toUpperCase() + subType.slice(1)}`, url: `echecksheet:///status-ga/inspeksi-preventif-lift-barang/${subType}` }));
 }
+function generatePowerHouseQR(): QRConfig[] {
+  return [
+    { type: "Power House", title: "Power House Utilitas & Travo", url: "echecksheet:///status-ga/power-house", description: "Pemeriksaan 13 peralatan vital Power House" }
+  ];
+}
 
 // ──────────────────────────────────────────────────────────────────────────────
 // MAIN PAGE COMPONENT
@@ -427,6 +432,7 @@ export default function QRGeneratorPage() {
     { id: "exit-lamp", label: "🚪 Exit Lamp", count: EXIT_LAMP_CATEGORIES.length, generator: generateExitLampQR },
     { id: "panel", label: "⚡ Panel", count: PANEL_AREAS.length, generator: generatePanelQR },
     { id: "stop-kontak", label: "🔌 Stop Kontak", count: STOP_KONTAK_TYPES.length, generator: generateStopKontakQR },
+    { id: "power-house", label: "🏭 Power House", count: 1, generator: generatePowerHouseQR },
     { id: "inf-jalan", label: "🛣️ Inf. Jalan", count: INF_JALAN_AREAS.length, generator: generateInfJalanQR },
     { id: "tg-listrik", label: "🪜 Tangga Listrik", count: TG_LISTRIK_AREAS.length, generator: generateTgListrikQR },
     { id: "lift-preventif", label: "🔧 Lift Preventif", count: LIFT_BARANG_SUB_TYPES.length, generator: generateLiftBarangPreventifQR },
