@@ -274,7 +274,6 @@ interface InspectionEntry {
   sourceAreaName?: string;
   inspectorId?: string;
   inspectorName?: string;
-  scanVerified?: boolean;
   date: string;
   rows: InspectionRow[];
   savedAt: number;
