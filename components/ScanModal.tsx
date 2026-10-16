@@ -212,6 +212,10 @@ export function ScanModal({ isOpen, onClose }: ScanModalProps) {
               : `/status-ga/form-inspeksi-stop-kontak/${encodeURIComponent(id)}`;
             break;
 
+          case "power-house":
+            targetUrl = `/status-ga/power-house`;
+            break;
+
           case "inf-jalan":
             targetUrl = action === "history"
               ? `/status-ga/ga-inf-jalan/riwayat/${encodeURIComponent(id)}`

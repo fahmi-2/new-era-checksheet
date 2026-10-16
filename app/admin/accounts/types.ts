@@ -25,6 +25,7 @@ export const VALID_CHECKSHEETS = [
   { key: "tg-listrik", label: "Tangga Listrik" },
   { key: "panel", label: "Panel Listrik" },
   { key: "form-inspeksi-stop-kontak", label: "Stop Kontak" },
+  { key: "power-house", label: "Power House" },
   { key: "e-checksheet-apd", label: "APD" },
   { key: "inf-jalan", label: "Infrastruktur Jalan" },
   { key: "inspeksi-apd", label: "Inspeksi APD" },

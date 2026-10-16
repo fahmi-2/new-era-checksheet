@@ -33,7 +33,7 @@ export function GaInspeksiApdContent() {
 
   const openArea = getQueryParam('openArea');
   const TYPE_SLUG = 'inspeksi-apd';
-  
+
   const [isMounted, setIsMounted] = useState(false);
   const [authVerified, setAuthVerified] = useState(false);
   const [showModal, setShowModal] = useState(false);
@@ -44,11 +44,11 @@ export function GaInspeksiApdContent() {
   const [availableDates, setAvailableDates] = useState<string[]>([]);
   const [selectedDate, setSelectedDate] = useState("");
   const [checksheetData, setChecksheetData] = useState<any>(null);
-  
+
   // ✅ CHANGED: Store ALL items untuk filtering
   const [allItems, setAllItems] = useState<ChecklistItem[]>([]);
   const [currentAreaItems, setCurrentAreaItems] = useState<ChecklistItem[]>([]);
-  
+
   const [isLoading, setIsLoading] = useState(false);
   const [areaStatuses, setAreaStatuses] = useState<Record<number, { statusLabel: string; statusColor: string; lastCheck: string }>>({});
   const [isLoadingStatuses, setIsLoadingStatuses] = useState(false);
@@ -84,24 +84,24 @@ export function GaInspeksiApdContent() {
   // ✅ Load status untuk semua area
   useEffect(() => {
     if (areas.length === 0 || isLoadingStatuses || !authVerified) return;
-    
+
     const loadAllStatuses = async () => {
       setIsLoadingStatuses(true);
-      
+
       const statusMap: Record<number, { statusLabel: string; statusColor: string; lastCheck: string }> = {};
 
       for (const area of areas) {
         try {
           const dates = await getAvailableDates(TYPE_SLUG, area.id);
-          
+
           if (dates.length > 0) {
             const latest = dates[0];
             statusMap[area.id] = {
               statusLabel: "Checked",
               statusColor: "#43a047",
-              lastCheck: new Date(latest).toLocaleDateString("id-ID", { 
-                day: "numeric", 
-                month: "short" 
+              lastCheck: new Date(latest).toLocaleDateString("id-ID", {
+                day: "numeric",
+                month: "short"
               })
             };
           } else {
@@ -158,12 +158,12 @@ export function GaInspeksiApdContent() {
   // ✅ Auto-open modal jika ada openArea param
   useEffect(() => {
     if (!isMounted || !authVerified || !openArea || areas.length === 0) return;
-    
+
     console.log('🔍 Searching for area to auto-open:', openArea);
     const found = areas.find((item) => {
       // ✅ Handle both ○ and TAB as separator
-      const parts = item.name.includes(' ○ ') 
-        ? item.name.split(' ○ ') 
+      const parts = item.name.includes(' ○ ')
+        ? item.name.split(' ○ ')
         : item.name.split('\t');
       return parts[0]?.trim() === openArea;
     });
@@ -177,36 +177,36 @@ export function GaInspeksiApdContent() {
   // ✅ CHANGED: Filter items berdasarkan area SEBELUM load data
   const filterItemsForArea = (area: Area): ChecklistItem[] => {
     // ✅ Handle both ○ and TAB as separator
-    const parts = area.name.includes(' ○ ') 
-      ? area.name.split(' ○ ') 
+    const parts = area.name.includes(' ○ ')
+      ? area.name.split(' ○ ')
       : area.name.split('\t');
     const areaBaseName = parts[0]?.trim() || '';
-    
+
     console.log('🔍 Filtering items for area:', areaBaseName);
-    
+
     // Filter by area number from item_key
     const areaNo = area.no;
     const expectedPrefix = `AREA${areaNo.toString().padStart(2, '0')}_`;
-    
+
     const matchedProses = allItems.find(item => {
       if (item.item_group !== 'PROSES') return false;
       return item.item_key.startsWith(expectedPrefix);
     });
-    
+
     if (!matchedProses) {
       console.warn('⚠️ No matching PROSES found for area:', areaBaseName);
       return [];
     }
-    
+
     console.log('✅ Matched PROSES:', matchedProses.item_check, matchedProses.item_key);
-    
+
     // Get all items for this area (PROSES + its APD items)
-    const filteredItems = allItems.filter(item => 
+    const filteredItems = allItems.filter(item =>
       item.item_key.startsWith(expectedPrefix)
     );
-    
+
     console.log('✅ Filtered to', filteredItems.length, 'items for area:', area.name);
-    
+
     return filteredItems;
   };
 
@@ -215,28 +215,28 @@ export function GaInspeksiApdContent() {
     setSelectedArea(area);
     setShowModal(true);
     setIsLoading(true);
-    
+
     try {
       // ✅ Filter items for this specific area
       const areaItems = filterItemsForArea(area);
       setCurrentAreaItems(areaItems);
-      
+
       if (areaItems.length === 0) {
         console.warn('⚠️ No items found for area:', area.name);
         setChecksheetData(null);
         setIsLoading(false);
         return;
       }
-      
+
       // Load available dates untuk area ini
       const dates = await getAvailableDates(TYPE_SLUG, area.id);
       setAvailableDates(dates);
-      
+
       // Set tanggal terbaru sebagai default
       if (dates.length > 0) {
         const latestDate = dates.sort((a, b) => new Date(b).getTime() - new Date(a).getTime())[0];
         setSelectedDate(latestDate);
-        
+
         // Load data untuk tanggal terbaru dengan items yang sudah di-filter
         await loadDateData(area.id, latestDate, areaItems);
       } else {
@@ -254,20 +254,20 @@ export function GaInspeksiApdContent() {
   // ✅ CHANGED: Load data dengan parameter items
   const loadDateData = async (areaId: number, date: string, items?: ChecklistItem[]) => {
     setIsLoading(true);
-    
+
     // Use provided items or current area items
     const itemsToUse = items || currentAreaItems;
-    
+
     try {
       const data = await getChecklistByDate(TYPE_SLUG, areaId, date);
-      
+
       if (data && itemsToUse.length > 0) {
         // Transform data untuk display
         const rows: any[] = [];
-        
+
         // Get proses items (should be multiple for this area)
         const prosesItems = itemsToUse.filter(item => item.item_group === 'PROSES');
-        
+
         prosesItems.forEach(prosesItem => {
           const prosesData = data[prosesItem.item_key];
           let parsedNotes: any = {};
@@ -278,7 +278,7 @@ export function GaInspeksiApdContent() {
           } catch (e) {
             console.error('Error parsing notes:', e);
           }
-          
+
           // Add proses row
           rows.push({
             type: "proses",
@@ -295,10 +295,10 @@ export function GaInspeksiApdContent() {
             pic: prosesData?.pic || "",
             verify: prosesData?.verify || ""
           });
-          
+
           // Find and add APD rows for this proses
           const apdItems = itemsToUse.filter(item => item.item_group === prosesItem.item_key);
-          
+
           apdItems.forEach(apdItem => {
             const apdData = data[apdItem.item_key];
             let apdNotes: any = {};
@@ -309,7 +309,7 @@ export function GaInspeksiApdContent() {
             } catch (e) {
               console.error('Error parsing APD notes:', e);
             }
-            
+
             rows.push({
               type: "apd",
               proses: apdItem.item_check,
@@ -327,11 +327,11 @@ export function GaInspeksiApdContent() {
             });
           });
         });
-        
+
         // Get inspector from first item
         const firstItemKey = Object.keys(data)[0];
         const inspector = data[firstItemKey]?.inspector || "";
-        
+
         setChecksheetData({
           date: date,
           data: rows,
@@ -340,7 +340,7 @@ export function GaInspeksiApdContent() {
       } else {
         setChecksheetData(null);
       }
-      
+
       console.log('Loaded data for date:', date);
     } catch (error) {
       console.error("Error loading date data:", error);
@@ -370,8 +370,8 @@ export function GaInspeksiApdContent() {
   // Filter areas berdasarkan kategori dan search
   const filteredData = areas.filter(item => {
     // ✅ Handle both ○ and TAB as separator
-    const parts = item.name.includes(' ○ ') 
-      ? item.name.split(' ○ ') 
+    const parts = item.name.includes(' ○ ')
+      ? item.name.split(' ○ ')
       : item.name.split('\t');
     const areaName = parts[0]?.trim() || '';
     const areaType = parts[1]?.trim() || '';
@@ -422,27 +422,27 @@ export function GaInspeksiApdContent() {
           >
             <ArrowLeft size={18} /> Kembali
           </button>
-          
+
           <div style={{
             background: "#1976d2",
             borderRadius: "8px",
             padding: "20px 24px",
             boxShadow: "0 2px 8px rgba(0,0,0,0.1)"
           }}>
-            <h1 style={{ 
-              margin: "0 0 6px 0", 
-              color: "white", 
-              fontSize: "26px", 
-              fontWeight: "600", 
-              letterSpacing: "-0.5px" 
+            <h1 style={{
+              margin: "0 0 6px 0",
+              color: "white",
+              fontSize: "26px",
+              fontWeight: "600",
+              letterSpacing: "-0.5px"
             }}>
               🛡️ APD Inspection Dashboard
             </h1>
-            <p style={{ 
-              margin: 0, 
-              color: "#e3f2fd", 
-              fontSize: "14px", 
-              fontWeight: "400" 
+            <p style={{
+              margin: 0,
+              color: "#e3f2fd",
+              fontSize: "14px",
+              fontWeight: "400"
             }}>
               Monthly inspection schedule and maintenance records for Personal Protective Equipment
             </p>
@@ -463,12 +463,12 @@ export function GaInspeksiApdContent() {
           alignItems: "flex-end"
         }}>
           <div style={{ flex: 1, minWidth: "200px" }}>
-            <label htmlFor="category-select" style={{ 
-              display: "block", 
-              marginBottom: "6px", 
-              fontSize: "14px", 
-              fontWeight: "500", 
-              color: "#424242" 
+            <label htmlFor="category-select" style={{
+              display: "block",
+              marginBottom: "6px",
+              fontSize: "14px",
+              fontWeight: "500",
+              color: "#424242"
             }}>
               Area Type:
             </label>
@@ -498,12 +498,12 @@ export function GaInspeksiApdContent() {
           </div>
 
           <div style={{ flex: 1, minWidth: "200px" }}>
-            <label htmlFor="search-input" style={{ 
-              display: "block", 
-              marginBottom: "6px", 
-              fontSize: "14px", 
-              fontWeight: "500", 
-              color: "#424242" 
+            <label htmlFor="search-input" style={{
+              display: "block",
+              marginBottom: "6px",
+              fontSize: "14px",
+              fontWeight: "500",
+              color: "#424242"
             }}>
               Search Area:
             </label>
@@ -529,9 +529,9 @@ export function GaInspeksiApdContent() {
 
         {/* Loading Status Indicator */}
         {isLoadingStatuses && (
-          <div style={{ 
-            padding: "12px 20px", 
-            background: "#fff3cd", 
+          <div style={{
+            padding: "12px 20px",
+            background: "#fff3cd",
             borderRadius: "6px",
             marginBottom: "16px",
             color: "#856404",
@@ -574,12 +574,12 @@ export function GaInspeksiApdContent() {
                 ) : (
                   filteredData.map((area, idx) => {
                     // ✅ Handle both ○ and TAB as separator
-                    const parts = area.name.includes(' ○ ') 
-                      ? area.name.split(' ○ ') 
+                    const parts = area.name.includes(' ○ ')
+                      ? area.name.split(' ○ ')
                       : area.name.split('\t');
                     const areaName = parts[0]?.trim() || '';
                     const areaType = parts[1]?.trim() || '';
-                    
+
                     const status = areaStatuses[area.id] || {
                       statusLabel: "Loading...",
                       statusColor: "#757575",
@@ -691,33 +691,33 @@ export function GaInspeksiApdContent() {
                 borderBottom: "1px solid #e0e0e0"
               }}>
                 <div>
-                  <h2 style={{ 
-                    margin: "0 0 4px 0", 
-                    color: "#212121", 
-                    fontSize: "20px", 
-                    fontWeight: "600" 
+                  <h2 style={{
+                    margin: "0 0 4px 0",
+                    color: "#212121",
+                    fontSize: "20px",
+                    fontWeight: "600"
                   }}>
-                    Inspection History - {selectedArea.name.includes(' ○ ') 
-                      ? selectedArea.name.split(' ○ ')[0] 
+                    Inspection History - {selectedArea.name.includes(' ○ ')
+                      ? selectedArea.name.split(' ○ ')[0]
                       : selectedArea.name.split('\t')[0]?.trim()}
                   </h2>
-                  <p style={{ 
-                    margin: "0", 
-                    color: "#616161", 
-                    fontSize: "14px" 
+                  <p style={{
+                    margin: "0",
+                    color: "#616161",
+                    fontSize: "14px"
                   }}>
-                    {selectedArea.name.includes(' ○ ') 
-                      ? selectedArea.name.split(' ○ ')[1] 
+                    {selectedArea.name.includes(' ○ ')
+                      ? selectedArea.name.split(' ○ ')[1]
                       : selectedArea.name.split('\t')[1]?.trim()} • {currentAreaItems.filter(i => i.item_group !== 'PROSES').length} APD Items
                   </p>
                 </div>
-                <button 
-                  onClick={closeDetail} 
-                  style={{ 
-                    background: "transparent", 
-                    border: "none", 
-                    fontSize: "28px", 
-                    cursor: "pointer", 
+                <button
+                  onClick={closeDetail}
+                  style={{
+                    background: "transparent",
+                    border: "none",
+                    fontSize: "28px",
+                    cursor: "pointer",
                     color: "#757575",
                     padding: "0",
                     width: "32px",
@@ -731,16 +731,16 @@ export function GaInspeksiApdContent() {
                 </button>
               </div>
 
-              <div style={{ 
-                padding: "16px 24px", 
-                background: "white", 
-                borderBottom: "1px solid #e0e0e0" 
+              <div style={{
+                padding: "16px 24px",
+                background: "white",
+                borderBottom: "1px solid #e0e0e0"
               }}>
-                <label style={{ 
-                  fontWeight: "500", 
-                  color: "#424242", 
-                  marginRight: "12px", 
-                  fontSize: "14px" 
+                <label style={{
+                  fontWeight: "500",
+                  color: "#424242",
+                  marginRight: "12px",
+                  fontSize: "14px"
                 }}>
                   Inspection Date:
                 </label>
@@ -761,21 +761,21 @@ export function GaInspeksiApdContent() {
                   <option value="">Select date</option>
                   {availableDates.map(date => (
                     <option key={date} value={date}>
-                      {new Date(date).toLocaleDateString("en-US", { 
-                        day: "2-digit", 
-                        month: "short", 
-                        year: "numeric" 
+                      {new Date(date).toLocaleDateString("en-US", {
+                        day: "2-digit",
+                        month: "short",
+                        year: "numeric"
                       })}
                     </option>
                   ))}
                 </select>
               </div>
 
-              <div style={{ 
-                padding: "24px", 
-                overflowY: "auto", 
-                flex: 1, 
-                background: "#fafafa" 
+              <div style={{
+                padding: "24px",
+                overflowY: "auto",
+                flex: 1,
+                background: "#fafafa"
               }}>
                 {isLoading ? (
                   <div style={{ textAlign: "center", padding: "60px 20px", color: "#9e9e9e" }}>
@@ -790,99 +790,99 @@ export function GaInspeksiApdContent() {
                   </div>
                 ) : (
                   <div style={{ overflowX: "auto" }}>
-                    <table style={{ 
-                      width: "100%", 
-                      borderCollapse: "collapse", 
-                      fontSize: "12px", 
-                      minWidth: "1600px", 
-                      border: "1px solid #e0e0e0", 
-                      background: "white" 
+                    <table style={{
+                      width: "100%",
+                      borderCollapse: "collapse",
+                      fontSize: "12px",
+                      minWidth: "1600px",
+                      border: "1px solid #e0e0e0",
+                      background: "white"
                     }}>
                       <thead>
                         <tr style={{ background: "#fafafa", borderBottom: "2px solid #ccc" }}>
-                          <th rowSpan={2} style={{ 
-                            padding: "10px 8px", 
-                            border: "1px solid #ddd", 
-                            fontWeight: "600", 
-                            textAlign: "center", 
-                            width: "4%" 
+                          <th rowSpan={2} style={{
+                            padding: "10px 8px",
+                            border: "1px solid #ddd",
+                            fontWeight: "600",
+                            textAlign: "center",
+                            width: "4%"
                           }}>NO</th>
-                          <th style={{ 
-                            padding: "10px 8px", 
-                            border: "1px solid #ddd", 
-                            fontWeight: "600", 
-                            textAlign: "center", 
-                            width: "12%" 
+                          <th style={{
+                            padding: "10px 8px",
+                            border: "1px solid #ddd",
+                            fontWeight: "600",
+                            textAlign: "center",
+                            width: "12%"
                           }}>PROSES</th>
-                          <th rowSpan={2} colSpan={6} style={{ 
-                            padding: "8px", 
-                            border: "1px solid #ddd", 
-                            fontWeight: "600", 
-                            textAlign: "center", 
-                            width: "30%" 
+                          <th rowSpan={2} colSpan={6} style={{
+                            padding: "8px",
+                            border: "1px solid #ddd",
+                            fontWeight: "600",
+                            textAlign: "center",
+                            width: "30%"
                           }}>NO. MESIN/NIK</th>
-                          <th rowSpan={2} style={{ 
-                            padding: "10px 8px", 
-                            border: "1px solid #ddd", 
-                            fontWeight: "600", 
-                            textAlign: "center", 
-                            width: "8%" 
+                          <th rowSpan={2} style={{
+                            padding: "10px 8px",
+                            border: "1px solid #ddd",
+                            fontWeight: "600",
+                            textAlign: "center",
+                            width: "8%"
                           }}>PROSENTASE OK</th>
-                          <th rowSpan={2} colSpan={4} style={{ 
-                            padding: "10px 8px", 
-                            border: "1px solid #ddd", 
-                            fontWeight: "600", 
-                            textAlign: "center", 
-                            width: "16%" 
+                          <th rowSpan={2} colSpan={4} style={{
+                            padding: "10px 8px",
+                            border: "1px solid #ddd",
+                            fontWeight: "600",
+                            textAlign: "center",
+                            width: "16%"
                           }}>PROBLEM</th>
-                          <th rowSpan={2} colSpan={4} style={{ 
-                            padding: "10px 8px", 
-                            border: "1px solid #ddd", 
-                            fontWeight: "600", 
-                            textAlign: "center", 
-                            width: "16%" 
+                          <th rowSpan={2} colSpan={4} style={{
+                            padding: "10px 8px",
+                            border: "1px solid #ddd",
+                            fontWeight: "600",
+                            textAlign: "center",
+                            width: "16%"
                           }}>TINDAKAN PERBAIKAN</th>
-                          <th rowSpan={2} style={{ 
-                            padding: "10px 8px", 
-                            border: "1px solid #ddd", 
-                            fontWeight: "600", 
-                            textAlign: "center", 
-                            width: "8%" 
+                          <th rowSpan={2} style={{
+                            padding: "10px 8px",
+                            border: "1px solid #ddd",
+                            fontWeight: "600",
+                            textAlign: "center",
+                            width: "8%"
                           }}>PIC</th>
-                          <th rowSpan={2} style={{ 
-                            padding: "10px 8px", 
-                            border: "1px solid #ddd", 
-                            fontWeight: "600", 
-                            textAlign: "center", 
-                            width: "8%" 
+                          <th rowSpan={2} style={{
+                            padding: "10px 8px",
+                            border: "1px solid #ddd",
+                            fontWeight: "600",
+                            textAlign: "center",
+                            width: "8%"
                           }}>VERIFY</th>
                         </tr>
                         <tr style={{ background: "#fafafa", borderBottom: "2px solid #ccc" }}>
-                          <th style={{ 
-                            padding: "10px 8px", 
-                            border: "1px solid #ddd", 
-                            fontWeight: "600", 
-                            textAlign: "center", 
-                            width: "18%" 
+                          <th style={{
+                            padding: "10px 8px",
+                            border: "1px solid #ddd",
+                            fontWeight: "600",
+                            textAlign: "center",
+                            width: "18%"
                           }}>STANDART APD</th>
                         </tr>
                       </thead>
                       <tbody>
                         {checksheetData.data.map((row: any, idx: number) => (
                           <tr key={idx}>
-                            <td style={{ 
-                              padding: "8px", 
-                              border: "1px solid #ddd", 
-                              textAlign: "center", 
+                            <td style={{
+                              padding: "8px",
+                              border: "1px solid #ddd",
+                              textAlign: "center",
                               fontWeight: "600",
                               background: row.type === "proses" ? "#f5f5f5" : "white"
                             }}>
                               {idx + 1}
                             </td>
-                            <td style={{ 
-                              padding: "8px", 
-                              border: "1px solid #ddd", 
-                              textAlign: "left", 
+                            <td style={{
+                              padding: "8px",
+                              border: "1px solid #ddd",
+                              textAlign: "left",
                               fontWeight: row.type === "proses" ? "600" : "normal",
                               background: row.type === "proses" ? "#f5f5f5" : "white"
                             }}>
@@ -891,9 +891,9 @@ export function GaInspeksiApdContent() {
                             {[...Array(6)].map((_, i) => {
                               const val = row[`r${i + 1}`] || "";
                               return (
-                                <td key={i} style={{ 
-                                  padding: "6px", 
-                                  border: "1px solid #ddd", 
+                                <td key={i} style={{
+                                  padding: "6px",
+                                  border: "1px solid #ddd",
                                   textAlign: "center",
                                   background: "white"
                                 }}>
@@ -901,37 +901,37 @@ export function GaInspeksiApdContent() {
                                 </td>
                               );
                             })}
-                            <td style={{ 
-                              padding: "8px", 
-                              border: "1px solid #ddd", 
+                            <td style={{
+                              padding: "8px",
+                              border: "1px solid #ddd",
                               textAlign: "center",
                               background: "white"
                             }}>
                               {row.persentaseOk || "-"}
                             </td>
-                            <td colSpan={4} style={{ 
-                              padding: "6px", 
+                            <td colSpan={4} style={{
+                              padding: "6px",
                               border: "1px solid #ddd",
                               background: "white"
                             }}>
                               {row.problem || "-"}
                             </td>
-                            <td colSpan={4} style={{ 
-                              padding: "6px", 
+                            <td colSpan={4} style={{
+                              padding: "6px",
                               border: "1px solid #ddd",
                               background: "white"
                             }}>
                               {row.tindakanPerbaikan || "-"}
                             </td>
-                            <td style={{ 
-                              padding: "6px", 
+                            <td style={{
+                              padding: "6px",
                               border: "1px solid #ddd",
                               background: "white"
                             }}>
                               {row.pic || "-"}
                             </td>
-                            <td style={{ 
-                              padding: "6px", 
+                            <td style={{
+                              padding: "6px",
                               border: "1px solid #ddd",
                               background: "white"
                             }}>
@@ -941,43 +941,43 @@ export function GaInspeksiApdContent() {
                         ))}
                       </tbody>
                     </table>
-                    
-                    <div style={{ 
-                      marginTop: "20px", 
-                      padding: "16px", 
-                      background: "#f9f9f9", 
-                      borderRadius: "6px", 
-                      border: "1px solid #e0e0e0" 
+
+                    <div style={{
+                      marginTop: "20px",
+                      padding: "16px",
+                      background: "#f9f9f9",
+                      borderRadius: "6px",
+                      border: "1px solid #e0e0e0"
                     }}>
-                      <p style={{ 
-                        margin: "0 0 4px 0", 
-                        fontSize: "12px", 
-                        color: "#757575" 
+                      <p style={{
+                        margin: "0 0 4px 0",
+                        fontSize: "12px",
+                        color: "#757575"
                       }}>Inspector</p>
-                      <p style={{ 
-                        margin: "0", 
-                        fontSize: "14px", 
-                        fontWeight: "500", 
-                        color: "#424242" 
+                      <p style={{
+                        margin: "0",
+                        fontSize: "14px",
+                        fontWeight: "500",
+                        color: "#424242"
                       }}>
                         {checksheetData.inspector || "N/A"}
                       </p>
-                      <p style={{ 
-                        margin: "4px 0 0 0", 
-                        fontSize: "12px", 
-                        color: "#757575" 
+                      <p style={{
+                        margin: "4px 0 0 0",
+                        fontSize: "12px",
+                        color: "#757575"
                       }}>Inspection Date</p>
-                      <p style={{ 
-                        margin: "0", 
-                        fontSize: "14px", 
-                        fontWeight: "500", 
-                        color: "#424242" 
+                      <p style={{
+                        margin: "0",
+                        fontSize: "14px",
+                        fontWeight: "500",
+                        color: "#424242"
                       }}>
-                        {new Date(checksheetData.date).toLocaleDateString("id-ID", { 
-                          weekday: "long", 
-                          day: "numeric", 
-                          month: "long", 
-                          year: "numeric" 
+                        {new Date(checksheetData.date).toLocaleDateString("id-ID", {
+                          weekday: "long",
+                          day: "numeric",
+                          month: "long",
+                          year: "numeric"
                         })}
                       </p>
                     </div>
@@ -985,20 +985,20 @@ export function GaInspeksiApdContent() {
                 )}
               </div>
 
-              <div style={{ 
-                padding: "16px 24px", 
-                background: "#f5f5f5", 
-                borderTop: "1px solid #e0e0e0", 
-                textAlign: "right" 
+              <div style={{
+                padding: "16px 24px",
+                background: "#f5f5f5",
+                borderTop: "1px solid #e0e0e0",
+                textAlign: "right"
               }}>
-                <button 
-                  onClick={closeDetail} 
-                  style={{ 
-                    padding: "9px 20px", 
-                    background: "#757575", 
-                    color: "white", 
-                    border: "none", 
-                    borderRadius: "5px", 
+                <button
+                  onClick={closeDetail}
+                  style={{
+                    padding: "9px 20px",
+                    background: "#757575",
+                    color: "white",
+                    border: "none",
+                    borderRadius: "5px",
                     fontWeight: "500",
                     cursor: "pointer",
                     fontSize: "14px"

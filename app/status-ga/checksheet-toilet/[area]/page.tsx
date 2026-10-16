@@ -1,17 +1,17 @@
 // app/status-ga/checksheet-toilet/[area]/page.tsx
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth, isAuthorizedForChecksheet } from "@/lib/auth-context";
 import { Sidebar } from "@/components/Sidebar";
 import * as React from "react";
-import { QrCode } from "lucide-react";
+import { QrCode, Settings, Plus, Trash2, Edit2, Check, X, ShieldAlert, Sparkles } from "lucide-react";
 
-// ✅ TAMBAHKAN IMPORT HOOK SCAN VERIFICATION
+// ✅ HOOK SCAN VERIFICATION
 import { useScanVerification } from "@/lib/hooks/useScanVerification";
 
-// ✅ TAMBAHKAN IMPORT UNTUK OFFLINE MODE
+// ✅ HOOK OFFLINE MODE
 import { smartFetch } from '@/lib/smart-fetch';
 import { useConnection } from '@/lib/connection-context';
 
@@ -31,10 +31,23 @@ interface SavedData {
   [itemKey: string]: ChecksheetEntry[];
 }
 
-type FormType = "wanita" | "general" | "mixed";
+export type FormType = "wanita" | "general" | "mixed";
 
-// ─── STATIC DATA ─────────────────────────────────────────
-const INSPECTION_ITEMS = [
+export interface InspectionItemDef {
+  key: string;
+  no: number;
+  item: string;
+}
+
+export interface AreaDef {
+  id: string;
+  title: string;
+  desc: string;
+  type: FormType;
+}
+
+// ─── STATIC FALLBACK DATA ─────────────────────────────────
+const DEFAULT_INSPECTION_ITEMS: InspectionItemDef[] = [
   { key: "kebersihanLantai", no: 1, item: "Kebersihan lantai (tidak licin, tidak basah, bebas sampah)" },
   { key: "kebersihanDinding", no: 2, item: "Kebersihan dinding (tidak berlumut, tidak kotor, tidak berjamur)" },
   { key: "bauToilet", no: 3, item: "Bau tidak menyengat / tidak ada bau tidak sedap" },
@@ -50,26 +63,26 @@ const INSPECTION_ITEMS = [
   { key: "exhaustFan", no: 13, item: "Exhaust fan berfungsi baik (berputar normal, tidak berbunyi kasar, tidak bergetar berlebihan)" },
 ];
 
-const AREA_MAP: Record<string, { title: string; desc: string; type: FormType }> = {
-  "toilet-driver": { title: "TOILET - DRIVER", desc: "Toilet umum", type: "general" },
-  "toilet-bea-cukai": { title: "TOILET - BEA CUKAI", desc: "Toilet laki & perempuan", type: "mixed" },
-  "toilet-parkir": { title: "TOILET - PARKIR", desc: "Toilet umum", type: "general" },
-  "toilet-c2": { title: "TOILET - C2", desc: "Toilet wanita", type: "wanita" },
-  "toilet-c1": { title: "TOILET - C1", desc: "Toilet laki & perempuan", type: "mixed" },
-  "toilet-d": { title: "TOILET - D", desc: "Toilet laki & perempuan", type: "mixed" },
-  "toilet-auditorium": { title: "TOILET - AUDITORIUM", desc: "Toilet laki & perempuan", type: "mixed" },
-  "toilet-whs": { title: "TOILET - WHS", desc: "Toilet wanita", type: "wanita" },
-  "toilet-b1": { title: "TOILET - B1", desc: "Toilet laki & perempuan", type: "mixed" },
-  "toilet-b2": { title: "TOILET - B2", desc: "Toilet wanita", type: "wanita" },
-  "toilet-genba-b": { title: "TOILET - GENBA B", desc: "Toilet wanita", type: "wanita" },
-  "toilet-a": { title: "TOILET - A", desc: "Toilet laki & perempuan", type: "mixed" },
-  "toilet-lobby": { title: "TOILET - LOBBY", desc: "Toilet laki & perempuan", type: "mixed" },
-  "toilet-office-main": { title: "TOILET - OFFICE MAIN", desc: "Toilet laki & perempuan", type: "mixed" },
-  "toilet-b": { title: "TOILET - B", desc: "Toilet wanita", type: "wanita" },
+const DEFAULT_AREA_MAP: Record<string, AreaDef> = {
+  "toilet-driver": { id: "toilet-driver", title: "TOILET - DRIVER", desc: "Toilet umum", type: "general" },
+  "toilet-bea-cukai": { id: "toilet-bea-cukai", title: "TOILET - BEA CUKAI", desc: "Toilet laki & perempuan", type: "mixed" },
+  "toilet-parkir": { id: "toilet-parkir", title: "TOILET - PARKIR", desc: "Toilet umum", type: "general" },
+  "toilet-c2": { id: "toilet-c2", title: "TOILET - C2", desc: "Toilet wanita", type: "wanita" },
+  "toilet-c1": { id: "toilet-c1", title: "TOILET - C1", desc: "Toilet laki & perempuan", type: "mixed" },
+  "toilet-d": { id: "toilet-d", title: "TOILET - D", desc: "Toilet laki & perempuan", type: "mixed" },
+  "toilet-auditorium": { id: "toilet-auditorium", title: "TOILET - AUDITORIUM", desc: "Toilet laki & perempuan", type: "mixed" },
+  "toilet-whs": { id: "toilet-whs", title: "TOILET - WHS", desc: "Toilet wanita", type: "wanita" },
+  "toilet-b1": { id: "toilet-b1", title: "TOILET - B1", desc: "Toilet laki & perempuan", type: "mixed" },
+  "toilet-b2": { id: "toilet-b2", title: "TOILET - B2", desc: "Toilet wanita", type: "wanita" },
+  "toilet-genba-b": { id: "toilet-genba-b", title: "TOILET - GENBA B", desc: "Toilet wanita", type: "wanita" },
+  "toilet-a": { id: "toilet-a", title: "TOILET - A", desc: "Toilet laki & perempuan", type: "mixed" },
+  "toilet-lobby": { id: "toilet-lobby", title: "TOILET - LOBBY", desc: "Toilet laki & perempuan", type: "mixed" },
+  "toilet-office-main": { id: "toilet-office-main", title: "TOILET - OFFICE MAIN", desc: "Toilet laki & perempuan", type: "mixed" },
+  "toilet-b": { id: "toilet-b", title: "TOILET - B", desc: "Toilet wanita", type: "wanita" },
 };
 
-// Helper untuk mendapatkan label dan warna berdasarkan tipe
-const getTypeBadge = (type: FormType) => {
+// Helper untuk label dan warna badge
+export const getTypeBadge = (type: FormType) => {
   switch (type) {
     case "wanita":
       return { label: "🚺 Wanita", color: "#e91e63", bgColor: "#fce4ec", desc: "Female only" };
@@ -89,10 +102,11 @@ export default function ChecksheetToiletForm({ params }: { params: Promise<{ are
   const router = useRouter();
   const { user, loading } = useAuth();
 
-  // ✅ TAMBAHKAN HOOK INI - WAJIB DI TOP LEVEL
-  const { isScanned, isLoading: scanLoading } = useScanVerification();
+  // Verifikasi scan & Admin view check
+  const { isScanned, isLoading: scanLoading, isAdminView } = useScanVerification();
+  const isAdmin = isAdminView || !!(user && ["admin", "superadmin"].includes(user.role));
 
-  // ✅ TAMBAHKAN HOOK UNTUK OFFLINE MODE
+  // Offline Mode
   const { isOnline, refreshPendingCount } = useConnection();
 
   const [isMounted, setIsMounted] = useState(false);
@@ -100,18 +114,70 @@ export default function ChecksheetToiletForm({ params }: { params: Promise<{ are
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const [savedData, setSavedData] = useState<SavedData>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
-  // Step flow: "laki" → isi laki-laki dulu, "perempuan" → lanjut ke perempuan
   const [activeStep, setActiveStep] = useState<"laki" | "perempuan">("laki");
 
-  const currentArea = AREA_MAP[areaId] || { title: decodeURIComponent(areaId), desc: "Lokasi tidak diketahui", type: "mixed" as FormType };
+  // Dynamic Master Config state
+  const [inspectionItems, setInspectionItems] = useState<InspectionItemDef[]>(DEFAULT_INSPECTION_ITEMS);
+  const [areasList, setAreasList] = useState<AreaDef[]>(Object.values(DEFAULT_AREA_MAP));
+  const [isMasterLoading, setIsMasterLoading] = useState(false);
+
+  // Admin Item Management Modal states
+  const [showItemManagerModal, setShowItemManagerModal] = useState(false);
+  const [showAreaManagerModal, setShowAreaManagerModal] = useState(false);
+  const [editableItems, setEditableItems] = useState<InspectionItemDef[]>([]);
+  const [editableArea, setEditableArea] = useState<{ title: string; desc: string; type: FormType }>({
+    title: "",
+    desc: "",
+    type: "mixed"
+  });
+  const [isSavingMaster, setIsSavingMaster] = useState(false);
+
+  // Dynamic current area resolution
+  const currentArea = useMemo(() => {
+    const found = areasList.find(a => a.id === areaId);
+    if (found) return found;
+    return DEFAULT_AREA_MAP[areaId] || {
+      id: areaId,
+      title: decodeURIComponent(areaId).toUpperCase(),
+      desc: "Lokasi Toilet",
+      type: "mixed" as FormType
+    };
+  }, [areasList, areaId]);
+
   const formType: FormType = currentArea.type;
   const isSingleForm = formType === "wanita" || formType === "general";
   const kategori = "Toilet";
   const lokasi = currentArea.desc;
   const typeBadge = getTypeBadge(formType);
 
+  // ─── FETCH MASTER DATA CONFIG ───────────────────────────
+  const fetchMasterConfig = async () => {
+    try {
+      setIsMasterLoading(true);
+      const res = await fetch(`/api/toilet-inspections/master?_t=${Date.now()}`);
+      if (res.ok) {
+        const json = await res.json();
+        if (json.success && json.data) {
+          if (json.data.items && Array.isArray(json.data.items) && json.data.items.length > 0) {
+            setInspectionItems(json.data.items);
+          }
+          if (json.data.areas && Array.isArray(json.data.areas) && json.data.areas.length > 0) {
+            setAreasList(json.data.areas);
+          }
+        }
+      }
+    } catch (err) {
+      console.warn("⚠️ Gagal memuat master config toilet, menggunakan fallback default:", err);
+    } finally {
+      setIsMasterLoading(false);
+    }
+  };
+
   // ─── EFFECTS ────────────────────────────────────────────
-  useEffect(() => setIsMounted(true), []);
+  useEffect(() => {
+    setIsMounted(true);
+    fetchMasterConfig();
+  }, []);
 
   useEffect(() => {
     if (!isMounted) return;
@@ -131,36 +197,37 @@ export default function ChecksheetToiletForm({ params }: { params: Promise<{ are
     }
   }, [user, loading, router, isMounted]);
 
+  // Inisialisasi formulir jawaban
   useEffect(() => {
     if (!isMounted || !user) return;
     const picName = user.fullName || "";
     const newAnswers: Record<string, string> = {};
 
     if (isSingleForm) {
-      INSPECTION_ITEMS.forEach((item) => {
-        newAnswers[`${item.key}_hasil`] = "OK";
-        newAnswers[`${item.key}_keterangan`] = "";
-        newAnswers[`${item.key}_foto`] = "";
-        newAnswers[`${item.key}_tindakan`] = "";
-        newAnswers[`${item.key}_pic`] = picName;
+      inspectionItems.forEach((item) => {
+        newAnswers[`${item.key}_hasil`] = answers[`${item.key}_hasil`] || "OK";
+        newAnswers[`${item.key}_keterangan`] = answers[`${item.key}_keterangan`] || "";
+        newAnswers[`${item.key}_foto`] = answers[`${item.key}_foto`] || "";
+        newAnswers[`${item.key}_tindakan`] = answers[`${item.key}_tindakan`] || "";
+        newAnswers[`${item.key}_pic`] = answers[`${item.key}_pic`] || picName;
       });
     } else {
-      INSPECTION_ITEMS.forEach((item) => {
-        newAnswers[`${item.key}_L_hasil`] = "OK";
-        newAnswers[`${item.key}_L_keterangan`] = "";
-        newAnswers[`${item.key}_L_foto`] = "";
-        newAnswers[`${item.key}_L_tindakan`] = "";
-        newAnswers[`${item.key}_L_pic`] = picName;
+      inspectionItems.forEach((item) => {
+        newAnswers[`${item.key}_L_hasil`] = answers[`${item.key}_L_hasil`] || "OK";
+        newAnswers[`${item.key}_L_keterangan`] = answers[`${item.key}_L_keterangan`] || "";
+        newAnswers[`${item.key}_L_foto`] = answers[`${item.key}_L_foto`] || "";
+        newAnswers[`${item.key}_L_tindakan`] = answers[`${item.key}_L_tindakan`] || "";
+        newAnswers[`${item.key}_L_pic`] = answers[`${item.key}_L_pic`] || picName;
 
-        newAnswers[`${item.key}_P_hasil`] = "OK";
-        newAnswers[`${item.key}_P_keterangan`] = "";
-        newAnswers[`${item.key}_P_foto`] = "";
-        newAnswers[`${item.key}_P_tindakan`] = "";
-        newAnswers[`${item.key}_P_pic`] = picName;
+        newAnswers[`${item.key}_P_hasil`] = answers[`${item.key}_P_hasil`] || "OK";
+        newAnswers[`${item.key}_P_keterangan`] = answers[`${item.key}_P_keterangan`] || "";
+        newAnswers[`${item.key}_P_foto`] = answers[`${item.key}_P_foto`] || "";
+        newAnswers[`${item.key}_P_tindakan`] = answers[`${item.key}_P_tindakan`] || "";
+        newAnswers[`${item.key}_P_pic`] = answers[`${item.key}_P_pic`] || picName;
       });
     }
     setAnswers(newAnswers);
-  }, [isMounted, isSingleForm, user]);
+  }, [isMounted, isSingleForm, user, inspectionItems]);
 
   // ─── HANDLERS ───────────────────────────────────────────
   const handleInputChange = (field: string, value: string) => {
@@ -203,16 +270,16 @@ export default function ChecksheetToiletForm({ params }: { params: Promise<{ are
 
         if (isSingleForm) {
           const suffix = formType === "wanita" ? "p" : "g";
-          INSPECTION_ITEMS.forEach((item) => {
+          inspectionItems.forEach((item) => {
             const itemNum = item.no;
-            existingData[`${item.key}_hasil`] = data[`item_${itemNum}_hasil_${suffix}`] || "OK";
-            existingData[`${item.key}_keterangan`] = data[`item_${itemNum}_keterangan_${suffix}`] || "";
-            existingData[`${item.key}_foto`] = data[`item_${itemNum}_foto_${suffix}`] || "";
-            existingData[`${item.key}_tindakan`] = data[`item_${itemNum}_tindakan_${suffix}`] || "";
-            existingData[`${item.key}_pic`] = data[`item_${itemNum}_pic_${suffix}`] || user?.fullName || "";
+            existingData[`${item.key}_hasil`] = data[`item_${itemNum}_hasil_${suffix}`] || data[`item_${itemNum}_hasil_p`] || "OK";
+            existingData[`${item.key}_keterangan`] = data[`item_${itemNum}_keterangan_${suffix}`] || data[`item_${itemNum}_keterangan_p`] || "";
+            existingData[`${item.key}_foto`] = data[`item_${itemNum}_foto_${suffix}`] || data[`item_${itemNum}_foto_p`] || "";
+            existingData[`${item.key}_tindakan`] = data[`item_${itemNum}_tindakan_${suffix}`] || data[`item_${itemNum}_tindakan_p`] || "";
+            existingData[`${item.key}_pic`] = data[`item_${itemNum}_pic_${suffix}`] || data[`item_${itemNum}_pic_p`] || user?.fullName || "";
           });
         } else {
-          INSPECTION_ITEMS.forEach((item) => {
+          inspectionItems.forEach((item) => {
             const itemNum = item.no;
             existingData[`${item.key}_L_hasil`] = data[`item_${itemNum}_hasil_l`] || "OK";
             existingData[`${item.key}_L_keterangan`] = data[`item_${itemNum}_keterangan_l`] || "";
@@ -240,7 +307,7 @@ export default function ChecksheetToiletForm({ params }: { params: Promise<{ are
             let found = false;
 
             if (isSingleForm) {
-              INSPECTION_ITEMS.forEach((item) => {
+              inspectionItems.forEach((item) => {
                 const entry = (localData[item.key] || []).find((e: any) => e.date === selectedDate);
                 if (entry) {
                   found = true;
@@ -252,7 +319,7 @@ export default function ChecksheetToiletForm({ params }: { params: Promise<{ are
                 }
               });
             } else {
-              INSPECTION_ITEMS.forEach((item) => {
+              inspectionItems.forEach((item) => {
                 const entryL = (localData[`${item.key}_L`] || []).find((e: any) => e.date === selectedDate);
                 if (entryL) {
                   found = true;
@@ -282,7 +349,7 @@ export default function ChecksheetToiletForm({ params }: { params: Promise<{ are
               const picName = user?.fullName || "";
               const resetData: Record<string, string> = {};
               if (isSingleForm) {
-                INSPECTION_ITEMS.forEach((item) => {
+                inspectionItems.forEach((item) => {
                   resetData[`${item.key}_hasil`] = "OK";
                   resetData[`${item.key}_keterangan`] = "";
                   resetData[`${item.key}_foto`] = "";
@@ -290,7 +357,7 @@ export default function ChecksheetToiletForm({ params }: { params: Promise<{ are
                   resetData[`${item.key}_pic`] = picName;
                 });
               } else {
-                INSPECTION_ITEMS.forEach((item) => {
+                inspectionItems.forEach((item) => {
                   resetData[`${item.key}_L_hasil`] = "OK";
                   resetData[`${item.key}_L_keterangan`] = "";
                   resetData[`${item.key}_L_foto`] = "";
@@ -318,13 +385,13 @@ export default function ChecksheetToiletForm({ params }: { params: Promise<{ are
   };
 
   // Check if all laki-laki fields are filled (only for mixed type)
-  const isLakiComplete = formType === "mixed" && INSPECTION_ITEMS.every(
+  const isLakiComplete = formType === "mixed" && inspectionItems.every(
     (item) => !!answers[`${item.key}_L_hasil`]
   );
 
   const handleNextStep = () => {
     if (!selectedDate) { alert("Pilih tanggal terlebih dahulu!"); return; }
-    const missing = INSPECTION_ITEMS.filter((item) => !answers[`${item.key}_L_hasil`]);
+    const missing = inspectionItems.filter((item) => !answers[`${item.key}_L_hasil`]);
     if (missing.length > 0) {
       alert(`Mohon isi Hasil Pemeriksaan Laki-laki untuk:\n${missing.map(i => `Item ${i.no}`).join(", ")}`);
       return;
@@ -338,6 +405,129 @@ export default function ChecksheetToiletForm({ params }: { params: Promise<{ are
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
+  // ─── ADMIN MASTER EDIT HANDLERS ─────────────────────────
+  const openItemManager = () => {
+    setEditableItems(JSON.parse(JSON.stringify(inspectionItems)));
+    setShowItemManagerModal(true);
+  };
+
+  const handleAddItemRow = () => {
+    const nextNo = editableItems.length + 1;
+    const newKey = `itemCustom_${Date.now()}`;
+    setEditableItems(prev => [
+      ...prev,
+      { key: newKey, no: nextNo, item: `Item Pemeriksaan Baru ${nextNo}` }
+    ]);
+  };
+
+  const handleRemoveItemRow = (index: number) => {
+    if (editableItems.length <= 1) {
+      alert("Minimal harus ada 1 item pemeriksaan!");
+      return;
+    }
+    setEditableItems(prev => prev.filter((_, i) => i !== index).map((it, idx) => ({ ...it, no: idx + 1 })));
+  };
+
+  const handleItemTextChange = (index: number, val: string) => {
+    setEditableItems(prev => {
+      const copy = [...prev];
+      copy[index].item = val;
+      return copy;
+    });
+  };
+
+  const handleSaveMasterItems = async () => {
+    try {
+      setIsSavingMaster(true);
+      const reordered = editableItems.map((item, idx) => ({
+        ...item,
+        no: idx + 1,
+        key: item.key || `item_${idx + 1}`
+      }));
+
+      const res = await fetch("/api/toilet-inspections/master", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          items: reordered,
+          updated_by: user?.fullName || "admin"
+        })
+      });
+
+      const result = await res.json();
+      if (!res.ok || !result.success) {
+        throw new Error(result.message || "Gagal menyimpan item pemeriksaan");
+      }
+
+      setInspectionItems(reordered);
+      setShowItemManagerModal(false);
+      alert("✅ Daftar item pemeriksaan berhasil disimpan dan diperbarui untuk semua inspector!");
+    } catch (err: any) {
+      alert(`❌ Gagal menyimpan master item: ${err.message}`);
+    } finally {
+      setIsSavingMaster(false);
+    }
+  };
+
+  const openAreaManager = () => {
+    setEditableArea({
+      title: currentArea.title,
+      desc: currentArea.desc,
+      type: currentArea.type,
+    });
+    setShowAreaManagerModal(true);
+  };
+
+  const handleSaveMasterArea = async () => {
+    try {
+      setIsSavingMaster(true);
+      const updatedAreas = areasList.map(a => {
+        if (a.id === areaId) {
+          return {
+            ...a,
+            title: editableArea.title.trim() || a.title,
+            desc: editableArea.desc.trim() || a.desc,
+            type: editableArea.type,
+          };
+        }
+        return a;
+      });
+
+      // Jika area ini belum ada di list master, tambahkan
+      if (!updatedAreas.some(a => a.id === areaId)) {
+        updatedAreas.push({
+          id: areaId,
+          title: editableArea.title.trim() || currentArea.title,
+          desc: editableArea.desc.trim() || currentArea.desc,
+          type: editableArea.type,
+        });
+      }
+
+      const res = await fetch("/api/toilet-inspections/master", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          areas: updatedAreas,
+          updated_by: user?.fullName || "admin"
+        })
+      });
+
+      const result = await res.json();
+      if (!res.ok || !result.success) {
+        throw new Error(result.message || "Gagal menyimpan informasi area");
+      }
+
+      setAreasList(updatedAreas);
+      setShowAreaManagerModal(false);
+      alert("✅ Informasi lokasi/zona toilet berhasil diperbarui!");
+    } catch (err: any) {
+      alert(`❌ Gagal menyimpan area: ${err.message}`);
+    } finally {
+      setIsSavingMaster(false);
+    }
+  };
+
+  // ─── SAVE SUBMIT HANDLER ────────────────────────────────
   const handleSave = async () => {
     if (!selectedDate) { alert("Pilih tanggal pemeriksaan terlebih dahulu!"); return; }
 
@@ -352,11 +542,11 @@ export default function ChecksheetToiletForm({ params }: { params: Promise<{ are
 
     const missingFields: string[] = [];
     if (isSingleForm) {
-      INSPECTION_ITEMS.forEach((item) => {
+      inspectionItems.forEach((item) => {
         if (!answers[`${item.key}_hasil`]) missingFields.push(`Item ${item.no}`);
       });
     } else {
-      INSPECTION_ITEMS.forEach((item) => {
+      inspectionItems.forEach((item) => {
         if (!answers[`${item.key}_L_hasil`]) missingFields.push(`Item ${item.no} (Laki-laki)`);
         if (!answers[`${item.key}_P_hasil`]) missingFields.push(`Item ${item.no} (Perempuan)`);
       });
@@ -375,7 +565,6 @@ export default function ChecksheetToiletForm({ params }: { params: Promise<{ are
 
       const toiletType = formType === "wanita" ? "wanita_only" : formType === "general" ? "general" : "laki_perempuan";
 
-      // ✅ BUILD PAYLOAD DENGAN LOG YANG JELAS
       const apiPayload: Record<string, any> = {
         area_code: areaId,
         area_name: currentArea.title,
@@ -390,11 +579,8 @@ export default function ChecksheetToiletForm({ params }: { params: Promise<{ are
       console.log('💾 [Save] Form Type:', formType, '| Toilet Type:', toiletType, '| Is Single:', isSingleForm);
 
       if (isSingleForm) {
-        // ✅ UNTUK GENERAL & WANITA - Gunakan suffix 'p'
-        const suffix = "p"; // Selalu gunakan _p untuk single form
-        console.log(`📝 [Save] Building payload for ${formType} with suffix: _${suffix}`);
-
-        INSPECTION_ITEMS.forEach((item) => {
+        const suffix = "p";
+        inspectionItems.forEach((item) => {
           const itemNum = item.no;
           const hasilKey = `item_${itemNum}_hasil_${suffix}`;
           const ketKey = `item_${itemNum}_keterangan_${suffix}`;
@@ -407,31 +593,17 @@ export default function ChecksheetToiletForm({ params }: { params: Promise<{ are
           apiPayload[fotoKey] = answers[`${item.key}_foto`] || "";
           apiPayload[tindakanKey] = answers[`${item.key}_tindakan`] || "";
           apiPayload[picKey] = answers[`${item.key}_pic`] || user.fullName || "";
-
-          // Log untuk debugging (hanya item pertama)
-          if (itemNum === 1) {
-            console.log(`🔍 [Save] Sample payload:`, {
-              [hasilKey]: apiPayload[hasilKey],
-              [ketKey]: apiPayload[ketKey].substring(0, 50) + '...',
-              hasFoto: !!apiPayload[fotoKey],
-            });
-          }
         });
       } else {
-        // ✅ UNTUK MIXED (LAKI & PEREMPUAN)
-        console.log('📝 [Save] Building payload for mixed (L & P)');
-
-        INSPECTION_ITEMS.forEach((item) => {
+        inspectionItems.forEach((item) => {
           const itemNum = item.no;
 
-          // Laki-laki
           apiPayload[`item_${itemNum}_hasil_l`] = answers[`${item.key}_L_hasil`] || "OK";
           apiPayload[`item_${itemNum}_keterangan_l`] = answers[`${item.key}_L_keterangan`] || "";
           apiPayload[`item_${itemNum}_foto_l`] = answers[`${item.key}_L_foto`] || "";
           apiPayload[`item_${itemNum}_tindakan_l`] = answers[`${item.key}_L_tindakan`] || "";
           apiPayload[`item_${itemNum}_pic_l`] = answers[`${item.key}_L_pic`] || user.fullName || "";
 
-          // Perempuan
           apiPayload[`item_${itemNum}_hasil_p`] = answers[`${item.key}_P_hasil`] || "OK";
           apiPayload[`item_${itemNum}_keterangan_p`] = answers[`${item.key}_P_keterangan`] || "";
           apiPayload[`item_${itemNum}_foto_p`] = answers[`${item.key}_P_foto`] || "";
@@ -440,11 +612,6 @@ export default function ChecksheetToiletForm({ params }: { params: Promise<{ are
         });
       }
 
-      // Hitung jumlah field item yang dikirim
-      const itemCount = Object.keys(apiPayload).filter(k => k.startsWith('item_')).length;
-      console.log(`📊 [Save] Total item fields: ${itemCount}`);
-
-      // ✅ GUNAKAN smartFetch DENGAN METADATA
       const response = await smartFetch(
         "/e-checksheet-ga/api/toilet-inspections/submit",
         {
@@ -461,19 +628,16 @@ export default function ChecksheetToiletForm({ params }: { params: Promise<{ are
 
       const result = await response.json();
 
-      // Handle response
       if ((response as any).offline || result.offline) {
-        // Mode offline
         const pendingCount = await refreshPendingCount();
         alert(`📴 Data tersimpan offline!\n\n` +
           `📋 Detail:\n` +
           `- Area: ${currentArea.title}\n` +
           `- Tanggal: ${new Date(selectedDate).toLocaleDateString("id-ID")}\n` +
-          `- Items: ${INSPECTION_ITEMS.length} inspection points\n` +
+          `- Items: ${inspectionItems.length} inspection points\n` +
           `- Antrian: ${pendingCount} data\n\n` +
           `Data akan otomatis terkirim saat online kembali.`);
       } else {
-        // Mode online - sukses
         if (!result.success) {
           throw new Error(result.message || "Gagal menyimpan data");
         }
@@ -482,16 +646,16 @@ export default function ChecksheetToiletForm({ params }: { params: Promise<{ are
           `📋 Detail:\n` +
           `- Area: ${currentArea.title}\n` +
           `- Tanggal: ${new Date(selectedDate).toLocaleDateString("id-ID")}\n` +
-          `- Items: ${INSPECTION_ITEMS.length} inspection points`);
+          `- Items: ${inspectionItems.length} inspection points`);
       }
 
-      // Backup ke localStorage (tetap jalankan)
+      // Backup ke localStorage
       const newData: SavedData = { ...savedData };
       const storageKey = `e-checksheet-toilet-${areaId}`;
       const inspectorName = user.fullName || "Unknown User";
 
       if (isSingleForm) {
-        INSPECTION_ITEMS.forEach((item) => {
+        inspectionItems.forEach((item) => {
           const entry: ChecksheetEntry = {
             date: selectedDate,
             hasilPemeriksaan: answers[`${item.key}_hasil`] || "",
@@ -508,7 +672,7 @@ export default function ChecksheetToiletForm({ params }: { params: Promise<{ are
           newData[item.key] = arr.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
         });
       } else {
-        INSPECTION_ITEMS.forEach((item) => {
+        inspectionItems.forEach((item) => {
           const entryL: ChecksheetEntry = {
             date: selectedDate,
             hasilPemeriksaan: answers[`${item.key}_L_hasil`] || "",
@@ -547,7 +711,7 @@ export default function ChecksheetToiletForm({ params }: { params: Promise<{ are
       localStorage.setItem(storageKey, JSON.stringify(newData));
 
       // Update global history
-      const hasNG = INSPECTION_ITEMS.some((item) => {
+      const hasNG = inspectionItems.some((item) => {
         if (isSingleForm) return answers[`${item.key}_hasil`] === "NG";
         return answers[`${item.key}_L_hasil`] === "NG" || answers[`${item.key}_P_hasil`] === "NG";
       });
@@ -1453,8 +1617,89 @@ export default function ChecksheetToiletForm({ params }: { params: Promise<{ are
             </div>
           </div>
 
-          {/* ✅ SCAN WARNING BANNER - TAMBAHAN BARU */}
-          {!isScanned && (
+          {/* 👑 ADMIN MANAGEMENT BAR (Hanya Tampil untuk Admin / Superadmin) */}
+          {isAdmin && (
+            <div style={{
+              background: "linear-gradient(135deg, #1e3a8a 0%, #1e40af 100%)",
+              borderRadius: "10px",
+              padding: "12px 18px",
+              marginBottom: "16px",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              flexWrap: "wrap",
+              gap: "12px",
+              color: "white",
+              boxShadow: "0 4px 12px rgba(30, 58, 138, 0.2)",
+              border: "1px solid rgba(255, 255, 255, 0.2)"
+            }}>
+              <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                <span style={{ fontSize: "20px" }}>👑</span>
+                <div>
+                  <div style={{ fontWeight: "700", fontSize: "14px", display: "flex", alignItems: "center", gap: "6px" }}>
+                    Mode Administrator Aktif
+                    <span style={{ background: "#22c55e", color: "white", padding: "2px 8px", borderRadius: "10px", fontSize: "11px", fontWeight: "700" }}>
+                      Bypass Scan Aktif
+                    </span>
+                  </div>
+                  <div style={{ fontSize: "12px", color: "#bfdbfe" }}>
+                    Anda memiliki akses penuh untuk mengisi form tanpa scan QR dan mengedit master konfigurasi template.
+                  </div>
+                </div>
+              </div>
+
+              <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
+                <button
+                  type="button"
+                  onClick={openItemManager}
+                  style={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: "6px",
+                    padding: "8px 14px",
+                    background: "rgba(255, 255, 255, 0.18)",
+                    color: "white",
+                    border: "1px solid rgba(255, 255, 255, 0.35)",
+                    borderRadius: "6px",
+                    fontSize: "12px",
+                    fontWeight: "600",
+                    cursor: "pointer",
+                    transition: "all 0.2s"
+                  }}
+                  onMouseEnter={e => (e.currentTarget.style.background = "rgba(255, 255, 255, 0.3)")}
+                  onMouseLeave={e => (e.currentTarget.style.background = "rgba(255, 255, 255, 0.18)")}
+                >
+                  <Settings size={14} /> Kelola Item Checksheet ({inspectionItems.length})
+                </button>
+
+                <button
+                  type="button"
+                  onClick={openAreaManager}
+                  style={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: "6px",
+                    padding: "8px 14px",
+                    background: "rgba(255, 255, 255, 0.18)",
+                    color: "white",
+                    border: "1px solid rgba(255, 255, 255, 0.35)",
+                    borderRadius: "6px",
+                    fontSize: "12px",
+                    fontWeight: "600",
+                    cursor: "pointer",
+                    transition: "all 0.2s"
+                  }}
+                  onMouseEnter={e => (e.currentTarget.style.background = "rgba(255, 255, 255, 0.3)")}
+                  onMouseLeave={e => (e.currentTarget.style.background = "rgba(255, 255, 255, 0.18)")}
+                >
+                  <Edit2 size={14} /> Edit Info Lokasi &amp; Tipe
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* ✅ SCAN WARNING BANNER (Hanya untuk Inspector Biasa jika belum Scan) */}
+          {!isScanned && !isAdmin && (
             <div className="cs-banner cs-banner-warning cs-scan-warning">
               <span>🔒 Akses melalui scan QR code terlebih dahulu untuk mengisi checksheet ini.</span>
               <button
@@ -1487,14 +1732,14 @@ export default function ChecksheetToiletForm({ params }: { params: Promise<{ are
                 value={selectedDate}
                 onChange={(e) => setSelectedDate(e.target.value)}
                 max={new Date().toISOString().split("T")[0]}
-                disabled={!isScanned}
-                title={!isScanned ? "Harap scan QR code terlebih dahulu" : ""}
+                disabled={!isScanned && !isAdmin}
+                title={!isScanned && !isAdmin ? "Harap scan QR code terlebih dahulu" : ""}
               />
               <button
                 className="cs-btn cs-btn--load"
                 onClick={handleLoadExisting}
-                disabled={!selectedDate || !isScanned}
-                title={!isScanned ? "Harap scan QR code terlebih dahulu" : ""}
+                disabled={!selectedDate || (!isScanned && !isAdmin)}
+                title={!isScanned && !isAdmin ? "Harap scan QR code terlebih dahulu" : ""}
               >
                 📂 Muat Data
               </button>
@@ -1510,8 +1755,8 @@ export default function ChecksheetToiletForm({ params }: { params: Promise<{ are
               <button
                 className={`cs-step ${activeStep === "laki" ? "cs-step--active-male" : "cs-step--done"}`}
                 onClick={() => setActiveStep("laki")}
-                disabled={!isScanned}
-                title={!isScanned ? "Harap scan QR code terlebih dahulu" : ""}
+                disabled={!isScanned && !isAdmin}
+                title={!isScanned && !isAdmin ? "Harap scan QR code terlebih dahulu" : ""}
               >
                 <span className="cs-step-badge">{activeStep === "perempuan" ? "✓" : "1"}</span>
                 🚹 Toilet Laki-laki
@@ -1519,9 +1764,9 @@ export default function ChecksheetToiletForm({ params }: { params: Promise<{ are
               <div className="cs-step-divider" />
               <button
                 className={`cs-step ${activeStep === "perempuan" ? "cs-step--active-female" : isLakiComplete ? "cs-step--done" : "cs-step--locked"}`}
-                onClick={() => isLakiComplete ? setActiveStep("perempuan") : undefined}
-                disabled={!isLakiComplete && activeStep !== "perempuan" || !isScanned}
-                title={!isScanned ? "Harap scan QR code terlebih dahulu" : !isLakiComplete ? "Selesaikan isian Laki-laki terlebih dahulu" : ""}
+                onClick={() => (isLakiComplete || isAdmin) ? setActiveStep("perempuan") : undefined}
+                disabled={(!isLakiComplete && activeStep !== "perempuan" && !isAdmin) || (!isScanned && !isAdmin)}
+                title={!isScanned && !isAdmin ? "Harap scan QR code terlebih dahulu" : !isLakiComplete && !isAdmin ? "Selesaikan isian Laki-laki terlebih dahulu" : ""}
               >
                 <span className="cs-step-badge">2</span>
                 🚺 Toilet Perempuan
@@ -1534,12 +1779,12 @@ export default function ChecksheetToiletForm({ params }: { params: Promise<{ are
             <p className="cs-scroll-hint">← Geser untuk melihat semua kolom →</p>
             <div className="cs-table-scroll">
               <ChecksheetTable
-                inspectionItems={INSPECTION_ITEMS}
+                inspectionItems={inspectionItems}
                 formType={formType}
                 activeStep={activeStep}
                 answers={answers}
                 selectedDate={selectedDate}
-                isScanned={isScanned}
+                isScanned={isScanned || isAdmin}
                 onInputChange={handleInputChange}
                 onImageUpload={handleImageUpload}
               />
@@ -1548,7 +1793,7 @@ export default function ChecksheetToiletForm({ params }: { params: Promise<{ are
 
           {/* ── Card layout (mobile) ── */}
           <div className="cs-mobile-cards">
-            {INSPECTION_ITEMS.map((item) => (
+            {inspectionItems.map((item) => (
               <MobileCard
                 key={item.key}
                 item={item}
@@ -1556,7 +1801,7 @@ export default function ChecksheetToiletForm({ params }: { params: Promise<{ are
                 activeStep={activeStep}
                 answers={answers}
                 selectedDate={selectedDate}
-                isScanned={isScanned}
+                isScanned={isScanned || isAdmin}
                 onInputChange={handleInputChange}
                 onImageUpload={handleImageUpload}
               />
@@ -1574,8 +1819,8 @@ export default function ChecksheetToiletForm({ params }: { params: Promise<{ are
                   <button
                     className="cs-btn cs-btn--next-male"
                     onClick={handleNextStep}
-                    disabled={!selectedDate || !isScanned}
-                    title={!isScanned ? "Harap scan QR code terlebih dahulu" : ""}
+                    disabled={!selectedDate || (!isScanned && !isAdmin)}
+                    title={!isScanned && !isAdmin ? "Harap scan QR code terlebih dahulu" : ""}
                   >
                     Lanjut ke Toilet Perempuan 🚺 →
                   </button>
@@ -1588,8 +1833,8 @@ export default function ChecksheetToiletForm({ params }: { params: Promise<{ are
                   <button
                     className="cs-btn cs-btn--save"
                     onClick={handleSave}
-                    disabled={!selectedDate || isSubmitting || !isScanned}
-                    title={!isScanned ? "Harap scan QR code terlebih dahulu" : ""}
+                    disabled={!selectedDate || isSubmitting || (!isScanned && !isAdmin)}
+                    title={!isScanned && !isAdmin ? "Harap scan QR code terlebih dahulu" : ""}
                   >
                     {isSubmitting ? <><span className="cs-spinner" />Menyimpan...</> : "✓ Simpan Data"}
                   </button>
@@ -1607,8 +1852,8 @@ export default function ChecksheetToiletForm({ params }: { params: Promise<{ are
               <button
                 className="cs-btn cs-btn--save"
                 onClick={handleSave}
-                disabled={!selectedDate || isSubmitting || !isScanned}
-                title={!isScanned ? "Harap scan QR code terlebih dahulu" : ""}
+                disabled={!selectedDate || isSubmitting || (!isScanned && !isAdmin)}
+                title={!isScanned && !isAdmin ? "Harap scan QR code terlebih dahulu" : ""}
               >
                 {isSubmitting ? <><span className="cs-spinner" />Menyimpan...</> : "✓ Simpan Data"}
               </button>
@@ -1619,6 +1864,361 @@ export default function ChecksheetToiletForm({ params }: { params: Promise<{ are
               💡 <strong>Tip:</strong> Lampirkan foto pada &quot;Keterangan Temuan&quot; jika diperlukan. Tanggal pemeriksaan mengikuti pilihan di atas.
             </p>
           </div>
+
+          {/* ── MODAL KELOLA ITEM INSPECTION (ADMIN) ── */}
+          {showItemManagerModal && (
+            <div style={{
+              position: "fixed",
+              top: 0, left: 0, right: 0, bottom: 0,
+              background: "rgba(15, 23, 42, 0.6)",
+              display: "flex",
+              justifyContent: "center",
+              alignItems: "center",
+              zIndex: 3000,
+              padding: "20px",
+              backdropFilter: "blur(4px)"
+            }}>
+              <div style={{
+                background: "white",
+                borderRadius: "14px",
+                width: "100%",
+                maxWidth: "750px",
+                maxHeight: "90vh",
+                display: "flex",
+                flexDirection: "column",
+                boxShadow: "0 20px 40px rgba(0,0,0,0.25)",
+                overflow: "hidden"
+              }}>
+                {/* Header */}
+                <div style={{
+                  padding: "16px 22px",
+                  background: "linear-gradient(135deg, #1e3a8a 0%, #2563eb 100%)",
+                  color: "white",
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center"
+                }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                    <Settings size={20} />
+                    <h3 style={{ margin: 0, fontSize: "16px", fontWeight: "700" }}>
+                      Kelola Master Item Pemeriksaan Checksheet Toilet
+                    </h3>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setShowItemManagerModal(false)}
+                    style={{ background: "none", border: "none", color: "white", fontSize: "20px", cursor: "pointer" }}
+                  >
+                    ✕
+                  </button>
+                </div>
+
+                {/* Body Content */}
+                <div style={{ padding: "20px", overflowY: "auto", flex: 1 }}>
+                  <div style={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "center",
+                    marginBottom: "14px"
+                  }}>
+                    <p style={{ margin: 0, fontSize: "13px", color: "#64748b" }}>
+                      Ubah nama item, tambah item baru, atau hapus item. Perubahan akan langsung berlaku untuk semua inspector.
+                    </p>
+                    <button
+                      type="button"
+                      onClick={handleAddItemRow}
+                      style={{
+                        display: "inline-flex",
+                        alignItems: "center",
+                        gap: "6px",
+                        padding: "7px 14px",
+                        background: "#16a34a",
+                        color: "white",
+                        border: "none",
+                        borderRadius: "6px",
+                        fontSize: "12px",
+                        fontWeight: "600",
+                        cursor: "pointer"
+                      }}
+                    >
+                      <Plus size={14} /> Tambah Item
+                    </button>
+                  </div>
+
+                  <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+                    {editableItems.map((item, idx) => (
+                      <div
+                        key={item.key || idx}
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: "10px",
+                          padding: "10px 12px",
+                          background: "#f8fafc",
+                          border: "1px solid #e2e8f0",
+                          borderRadius: "8px"
+                        }}
+                      >
+                        <span style={{
+                          width: "28px",
+                          height: "28px",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          background: "#e2e8f0",
+                          borderRadius: "50%",
+                          fontSize: "12px",
+                          fontWeight: "700",
+                          color: "#334155",
+                          flexShrink: 0
+                        }}>
+                          {idx + 1}
+                        </span>
+
+                        <input
+                          type="text"
+                          value={item.item}
+                          onChange={(e) => handleItemTextChange(idx, e.target.value)}
+                          placeholder={`Nama item ke-${idx + 1}`}
+                          style={{
+                            flex: 1,
+                            padding: "8px 12px",
+                            border: "1px solid #cbd5e1",
+                            borderRadius: "6px",
+                            fontSize: "13px"
+                          }}
+                        />
+
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveItemRow(idx)}
+                          style={{
+                            padding: "8px",
+                            background: "#fee2e2",
+                            color: "#dc2626",
+                            border: "none",
+                            borderRadius: "6px",
+                            cursor: "pointer",
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center"
+                          }}
+                          title="Hapus Item"
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Footer */}
+                <div style={{
+                  padding: "14px 20px",
+                  background: "#f1f5f9",
+                  borderTop: "1px solid #e2e8f0",
+                  display: "flex",
+                  justifyContent: "flex-end",
+                  gap: "10px"
+                }}>
+                  <button
+                    type="button"
+                    onClick={() => setShowItemManagerModal(false)}
+                    style={{
+                      padding: "8px 16px",
+                      background: "#94a3b8",
+                      color: "white",
+                      border: "none",
+                      borderRadius: "6px",
+                      fontSize: "13px",
+                      fontWeight: "600",
+                      cursor: "pointer"
+                    }}
+                  >
+                    Batal
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleSaveMasterItems}
+                    disabled={isSavingMaster}
+                    style={{
+                      padding: "8px 18px",
+                      background: isSavingMaster ? "#93c5fd" : "#2563eb",
+                      color: "white",
+                      border: "none",
+                      borderRadius: "6px",
+                      fontSize: "13px",
+                      fontWeight: "600",
+                      cursor: isSavingMaster ? "not-allowed" : "pointer"
+                    }}
+                  >
+                    {isSavingMaster ? "Menyimpan Master..." : "💾 Simpan Master Data"}
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* ── MODAL EDIT INFO LOKASI & ZONA (ADMIN) ── */}
+          {showAreaManagerModal && (
+            <div style={{
+              position: "fixed",
+              top: 0, left: 0, right: 0, bottom: 0,
+              background: "rgba(15, 23, 42, 0.6)",
+              display: "flex",
+              justifyContent: "center",
+              alignItems: "center",
+              zIndex: 3000,
+              padding: "20px",
+              backdropFilter: "blur(4px)"
+            }}>
+              <div style={{
+                background: "white",
+                borderRadius: "14px",
+                width: "100%",
+                maxWidth: "520px",
+                display: "flex",
+                flexDirection: "column",
+                boxShadow: "0 20px 40px rgba(0,0,0,0.25)",
+                overflow: "hidden"
+              }}>
+                {/* Header */}
+                <div style={{
+                  padding: "16px 22px",
+                  background: "linear-gradient(135deg, #1e3a8a 0%, #2563eb 100%)",
+                  color: "white",
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center"
+                }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                    <Edit2 size={20} />
+                    <h3 style={{ margin: 0, fontSize: "16px", fontWeight: "700" }}>
+                      Edit Informasi Lokasi &amp; Tipe Toilet
+                    </h3>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setShowAreaManagerModal(false)}
+                    style={{ background: "none", border: "none", color: "white", fontSize: "20px", cursor: "pointer" }}
+                  >
+                    ✕
+                  </button>
+                </div>
+
+                {/* Body Form */}
+                <div style={{ padding: "20px", display: "flex", flexDirection: "column", gap: "14px" }}>
+                  <div>
+                    <label style={{ display: "block", fontSize: "13px", fontWeight: "600", color: "#334155", marginBottom: "6px" }}>
+                      Nama Lokasi Toilet (Header Title)
+                    </label>
+                    <input
+                      type="text"
+                      value={editableArea.title}
+                      onChange={(e) => setEditableArea({ ...editableArea, title: e.target.value })}
+                      placeholder="Contoh: TOILET - DRIVER"
+                      style={{
+                        width: "100%",
+                        padding: "9px 12px",
+                        border: "1px solid #cbd5e1",
+                        borderRadius: "6px",
+                        fontSize: "14px",
+                        boxSizing: "border-box"
+                      }}
+                    />
+                  </div>
+
+                  <div>
+                    <label style={{ display: "block", fontSize: "13px", fontWeight: "600", color: "#334155", marginBottom: "6px" }}>
+                      Deskripsi / Zona Lokasi
+                    </label>
+                    <input
+                      type="text"
+                      value={editableArea.desc}
+                      onChange={(e) => setEditableArea({ ...editableArea, desc: e.target.value })}
+                      placeholder="Contoh: Toilet umum samping pos security"
+                      style={{
+                        width: "100%",
+                        padding: "9px 12px",
+                        border: "1px solid #cbd5e1",
+                        borderRadius: "6px",
+                        fontSize: "14px",
+                        boxSizing: "border-box"
+                      }}
+                    />
+                  </div>
+
+                  <div>
+                    <label style={{ display: "block", fontSize: "13px", fontWeight: "600", color: "#334155", marginBottom: "6px" }}>
+                      Tipe Format Toilet
+                    </label>
+                    <select
+                      value={editableArea.type}
+                      onChange={(e) => setEditableArea({ ...editableArea, type: e.target.value as FormType })}
+                      style={{
+                        width: "100%",
+                        padding: "9px 12px",
+                        border: "1px solid #cbd5e1",
+                        borderRadius: "6px",
+                        fontSize: "14px",
+                        background: "white",
+                        boxSizing: "border-box"
+                      }}
+                    >
+                      <option value="mixed">🚹🚺 Mixed (Toilet Laki &amp; Perempuan)</option>
+                      <option value="wanita">🚺 Wanita (Female Only)</option>
+                      <option value="general">🚻 General (Toilet Umum)</option>
+                    </select>
+                  </div>
+                </div>
+
+                {/* Footer */}
+                <div style={{
+                  padding: "14px 20px",
+                  background: "#f1f5f9",
+                  borderTop: "1px solid #e2e8f0",
+                  display: "flex",
+                  justifyContent: "flex-end",
+                  gap: "10px"
+                }}>
+                  <button
+                    type="button"
+                    onClick={() => setShowAreaManagerModal(false)}
+                    style={{
+                      padding: "8px 16px",
+                      background: "#94a3b8",
+                      color: "white",
+                      border: "none",
+                      borderRadius: "6px",
+                      fontSize: "13px",
+                      fontWeight: "600",
+                      cursor: "pointer"
+                    }}
+                  >
+                    Batal
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleSaveMasterArea}
+                    disabled={isSavingMaster}
+                    style={{
+                      padding: "8px 18px",
+                      background: isSavingMaster ? "#93c5fd" : "#2563eb",
+                      color: "white",
+                      border: "none",
+                      borderRadius: "6px",
+                      fontSize: "13px",
+                      fontWeight: "600",
+                      cursor: isSavingMaster ? "not-allowed" : "pointer"
+                    }}
+                  >
+                    {isSavingMaster ? "Menyimpan..." : "💾 Simpan Perubahan"}
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
         </div>
       </div>
     </>
@@ -1645,7 +2245,7 @@ const ChecksheetTable = ({
   onInputChange,
   onImageUpload,
 }: {
-  inspectionItems: typeof INSPECTION_ITEMS;
+  inspectionItems: InspectionItemDef[];
   formType: FormType;
   activeStep: "laki" | "perempuan";
   answers: Record<string, string>;
@@ -1716,7 +2316,7 @@ const TableRow = ({
   onInputChange,
   onImageUpload,
 }: {
-  item: (typeof INSPECTION_ITEMS)[0];
+  item: InspectionItemDef;
   formType: FormType;
   activeStep: "laki" | "perempuan";
   answers: Record<string, string>;
@@ -1813,7 +2413,7 @@ const MobileCard = ({
   onInputChange,
   onImageUpload,
 }: {
-  item: (typeof INSPECTION_ITEMS)[0];
+  item: InspectionItemDef;
   formType: FormType;
   activeStep: "laki" | "perempuan";
   answers: Record<string, string>;

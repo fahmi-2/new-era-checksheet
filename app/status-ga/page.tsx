@@ -24,10 +24,9 @@ interface Category {
 }
 
 // ──────────────────────────────────────────────────────────────────────────────
-// MASTER CHECKSHEET DATABASE - Semua checksheet dengan unique key & icon
+// MASTER CHECKSHEET DATABASE
 // ──────────────────────────────────────────────────────────────────────────────
 const ALL_CHECKSHEETS: Record<string, ChecksheetItem> = {
-  // 🔥 Kategori 1: Proteksi Kebakaran & Evakuasi
   "hydrant": { name: "INSPEKSI HYDRANT", desc: "Cek kondisi fisik dan fungsional hidran", link: "inspeksi-hydrant", key: "hydrant", icon: "🚒" },
   "selang-hydrant": { name: "INSPEKSI FUNGSI DAN SELANG HYDRANT", desc: "Cek tekanan air, coupling, nozzle", link: "selang-hydrant", key: "selang-hydrant", icon: "💧" },
   "fire-alarm": { name: "INSPEKSI FIRE ALARM", desc: "Pastikan sistem alarm kebakaran siap siaga", link: "fire-alarm", key: "fire-alarm", icon: "🔔" },
@@ -35,28 +34,18 @@ const ALL_CHECKSHEETS: Record<string, ChecksheetItem> = {
   "apar": { name: "INSPEKSI APAR", desc: "Cek APAR: isi, kondisi, aksesibilitas", link: "inspeksi-apar", key: "apar", icon: "🧯" },
   "emergency-lamp": { name: "INSPEKSI EMERGENCY LAMP", desc: "Cek lampu darurat & exit lamp", link: "inspeksi-emergency", key: "emergency-lamp", icon: "🚨" },
   "exit-lamp-pintu-darurat": { name: "EXIT LAMP, PINTU DARURAT, DAN JALUR EVAKUASI", desc: "Cek pintu darurat & kejelasan jalur evakuasi", link: "exit-lamp-pintu-darurat", key: "exit-lamp-pintu-darurat", icon: "🚶" },
-  
-  // ⚙️ Kategori 2: Pemeliharaan Peralatan
   "lift-barang": { name: "PENGECEKAN LIFT BARANG DAILY", desc: "Cek harian lift barang: limit switch, tombol, kabin", link: "lift-barang", key: "lift-barang", icon: "🛗" },
   "inspeksi-preventif-lift-barang": { name: "INSPEKSI DAN PREVENTIF LIFT BARANG", desc: "Pemeliharaan preventif lift barang", link: "inspeksi-preventif-lift-barang", key: "inspeksi-preventif-lift-barang", icon: "🔧" },
   "tg-listrik": { name: "TANGGA LISTRIK (AWP)", desc: "Cek hidrolik, rem darurat, outrigger, kontrol keselamatan", link: "tg-listrik", key: "tg-listrik", icon: "🪜" },
-  
-  // ⚡ Kategori 3: Instalasi Listrik
-  "panel": { name: "PANEL", desc: "Inspeksi panel listrik: suhu, bau, suara, grounding, ELCB", link: "panel", key: "panel", icon: "⚡" },
+  "panel": { name: "PANEL", desc: "Inspeksi panel listrik: suhu, bau, suara, grounding, ELCB", link: "/e-checksheet-panel", key: "panel", icon: "⚡" },
   "form-inspeksi-stop-kontak": { name: "FORM PENGECEKAN STOP KONTAK DAN INSTALASI LISTRIK", desc: "Cek stop kontak dan instalasi listrik di area kerja", link: "form-inspeksi-stop-kontak", key: "form-inspeksi-stop-kontak", icon: "🔌" },
-  
-  // 🦺 Kategori 4: Keselamatan Personal & Prasarana
+  "power-house": { name: "INSPEKSI POWER HOUSE", desc: "Cek utilitas Power House: Travo, Genset, Booster Pump, Compressor", link: "power-house", key: "power-house", icon: "🏭" },
   "e-checksheet-apd": { name: "Form pengambilan APD", desc: "Formulir distribusi & pengambilan APD", link: "e-checksheet-apd/riwayat-apd", key: "e-checksheet-apd", icon: "🦺" },
   "inf-jalan": { name: "INSPEKSI INFRASTUKTUR JALAN", desc: "Cek kondisi jalan, trotoar, boardess pabrik", link: "inf-jalan", key: "inf-jalan", icon: "🛣️" },
-  "inspeksi-apd": { name: "INSPEKSI APD", desc: "Inspeksi pengecekan penggunaan APD", link: "inspeksi-apd", key: "inspeksi-apd", icon: "🔍" },
-  
-  // 🧹 Kategori 5: Kebersihan Fasilitas
+  "inspeksi-apd": { name: "INSPEKSI APD", desc: "Inspeksi pengecekan penggunaan APD", link: "/e-checksheet-ins-apd", key: "inspeksi-apd", icon: "🔍" },
   "checksheet-toilet": { name: "Checksheet Toilet", desc: "Patroli harian kebersihan toilet (standar 5S)", link: "checksheet-toilet", key: "checksheet-toilet", icon: "🚽" },
-};
+}
 
-// ──────────────────────────────────────────────────────────────────────────────
-// KATEGORI STRUCTURE - Grouping untuk display
-// ──────────────────────────────────────────────────────────────────────────────
 const CATEGORIES_STRUCTURE: Category[] = [
   {
     title: "1. Sistem Proteksi Kebakaran & Evakuasi",
@@ -73,7 +62,7 @@ const CATEGORIES_STRUCTURE: Category[] = [
   {
     title: "3. Keselamatan dan Instalasi Listrik",
     icon: "⚡",
-    items: ["panel", "form-inspeksi-stop-kontak"]
+    items: ["panel", "form-inspeksi-stop-kontak", "power-house"]
       .map(key => ALL_CHECKSHEETS[key]).filter(Boolean) as ChecksheetItem[]
   },
   {
@@ -88,21 +77,13 @@ const CATEGORIES_STRUCTURE: Category[] = [
     items: ["checksheet-toilet"]
       .map(key => ALL_CHECKSHEETS[key]).filter(Boolean) as ChecksheetItem[]
   },
-];
+]
 
-// ──────────────────────────────────────────────────────────────────────────────
-// ROLE TO DEFAULT CATEGORY MAPPING (fallback jika user tidak punya checksheets spesifik)
-// ──────────────────────────────────────────────────────────────────────────────
 const ROLE_TO_DEFAULT_CATEGORY: Record<string, number | null> = {
-  "inspector-ga-fire": 0,
-  "inspector-ga-equipment": 1,
-  "inspector-ga-electrical": 2,
-  "inspector-ga-personal": 3,
-  "inspector-ga-facility": 4,
-  "inspector-ga": null,
-  "admin": null,
-  "superadmin": null,
-};
+  "inspector-ga-fire": 0, "inspector-ga-equipment": 1, "inspector-ga-electrical": 2,
+  "inspector-ga-personal": 3, "inspector-ga-facility": 4, "inspector-ga": null,
+  "admin": null, "superadmin": null,
+}
 
 export default function StatusGA() {
   const router = useRouter()
@@ -110,591 +91,299 @@ export default function StatusGA() {
   const [redirected, setRedirected] = useState(false)
 
   useEffect(() => {
-    if (redirected) return;
-
+    if (redirected) return
     if (!user) {
-      setRedirected(true);
+      setRedirected(true)
       router.push("/login-page")
     } else if (!isAuthorizedForChecksheet(user)) {
-      setRedirected(true);
+      setRedirected(true)
       router.push("/home")
     }
   }, [user, router, redirected])
 
-  // ✅ FILTER CHECKSHEETS BERDASARKAN PERMISSION USER
   const displayedCategories = useMemo(() => {
-    if (!user) return [];
-    
-    // ✅ Admin/Superadmin: lihat semua
-    if (["admin", "superadmin"].includes(user.role)) {
-      return CATEGORIES_STRUCTURE;
-    }
-    
-    // ✅ Jika user punya checksheets spesifik, filter berdasarkan itu
+    if (!user) return []
+    if (["admin", "superadmin"].includes(user.role)) return CATEGORIES_STRUCTURE
+
     if (user.checksheets && user.checksheets.length > 0) {
-      const permittedKeys = new Set(user.checksheets);
-      
-      // Filter categories yang memiliki item diizinkan
+      const permittedKeys = new Set(user.checksheets)
       return CATEGORIES_STRUCTURE
-        .map(cat => ({
-          ...cat,
-          items: cat.items.filter(item => permittedKeys.has(item.key))
-        }))
-        .filter(cat => cat.items.length > 0); // Hanya tampilkan category yang tidak kosong
+        .map(cat => ({ ...cat, items: cat.items.filter(item => permittedKeys.has(item.key)) }))
+        .filter(cat => cat.items.length > 0)
     }
-    
-    // ✅ Fallback: tampilkan category default berdasarkan role
-    const defaultCategoryIndex = ROLE_TO_DEFAULT_CATEGORY[user.role];
+
+    const defaultCategoryIndex = ROLE_TO_DEFAULT_CATEGORY[user.role]
     if (defaultCategoryIndex !== null && defaultCategoryIndex !== undefined) {
-      return [CATEGORIES_STRUCTURE[defaultCategoryIndex]];
+      return [CATEGORIES_STRUCTURE[defaultCategoryIndex]]
     }
-    
-    // Default: semua category (untuk legacy role)
-    return CATEGORIES_STRUCTURE;
-    
-  }, [user]);
+    return CATEGORIES_STRUCTURE
+  }, [user])
 
   if (!user) return null
 
   const getRoleLabel = (role: string) => {
     const labels: Record<string, string> = {
-      "inspector-ga-fire": "🔥 Proteksi Kebakaran",
-      "inspector-ga-equipment": "⚙️ Peralatan",
-      "inspector-ga-electrical": "⚡ Listrik",
-      "inspector-ga-personal": "🦺 Personal & Prasarana",
-      "inspector-ga-facility": "🧹 Fasilitas",
-      "admin": "👑 Administrator",
-      "superadmin": "🌟 Super Administrator",
-    };
-    return labels[role] || "Inspector GA";
-  };
+      "inspector-ga-fire": "🔥 Proteksi Kebakaran", "inspector-ga-equipment": "⚙️ Peralatan",
+      "inspector-ga-electrical": "⚡ Listrik", "inspector-ga-personal": "🦺 Personal & Prasarana",
+      "inspector-ga-facility": "🧹 Fasilitas", "admin": "👑 Administrator", "superadmin": "🌟 Super Administrator",
+    }
+    return labels[role] || "Inspector GA"
+  }
 
-  // Hitung total checksheet yang bisa diakses
-  const totalAccessible = displayedCategories.reduce((sum, cat) => sum + cat.items.length, 0);
-  const totalAll = CATEGORIES_STRUCTURE.reduce((sum, cat) => sum + cat.items.length, 0);
-  const hasPermission = user.checksheets && user.checksheets.length > 0;
-  const isAdmin = ["admin", "superadmin"].includes(user.role);
+  const totalAccessible = displayedCategories.reduce((sum, cat) => sum + cat.items.length, 0)
+  const totalAll = CATEGORIES_STRUCTURE.reduce((sum, cat) => sum + cat.items.length, 0)
+  const hasPermission = user.checksheets && user.checksheets.length > 0
+  const isAdmin = ["admin", "superadmin"].includes(user.role)
 
   return (
-    <div className="app-page">
+    <div className="ga-app-shell">
       <Sidebar userName={user.fullName} />
-
-      <main className="page-content">
-        <header className="header">
-          <div className="header-left">
-            <h1 className="page-title">📋 Checklist General Affairs</h1>
-            <span className="role-badge">Role: {getRoleLabel(user.role)}</span>
+      <main className="ga-main">
+        {/* Header */}
+        <header className="ga-hero">
+          <div className="ga-hero-content">
+            <p className="ga-eyebrow">📋 General Affairs</p>
+            <h1>Checklist Operasional</h1>
+            <p className="ga-subtitle">Pilih checksheet untuk mulai pemeriksaan. Data tersimpan sesuai area dan tanggal.</p>
           </div>
-          <div className="header-right">
-            <span className="welcome-text">Selamat datang, <strong>{user.fullName}</strong></span>
-            {!isAdmin && (
-              <span className="access-count" title="Checksheet yang dapat diakses">
-                📊 {totalAccessible} / {totalAll} checksheet
-              </span>
-            )}
+          <div className="ga-hero-meta">
+            <span className="ga-role-badge">{getRoleLabel(user.role)}</span>
+            {!isAdmin && <span className="ga-count-badge">{totalAccessible} / {totalAll} Akses</span>}
           </div>
         </header>
 
-        {/* Permission Info Banner - Tampilkan jika user punya permission spesifik */}
+        {/* Banners */}
         {hasPermission && !isAdmin && (
-          <div className="permission-banner" role="status">
-            <div className="permission-banner-header">
-              <span className="permission-banner-icon">🎯</span>
-              <div className="permission-banner-content">
-                <strong>Akses Terbatas Aktif</strong>
-                <p>
-                  Anda memiliki akses ke <strong>{totalAccessible} checksheet</strong> dari total {totalAll} checksheet yang tersedia.
-                  Hanya checksheet yang diizinkan oleh admin yang akan ditampilkan.
-                </p>
-              </div>
-            </div>
-            <details className="permission-details">
-              <summary>
-                <span>Lihat daftar checksheet yang diizinkan ({totalAccessible})</span>
-                <svg className="chevron-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <path d="M6 9l6 6 6-6"/>
-                </svg>
-              </summary>
-              <div className="permitted-grid">
-                {user.checksheets?.map(key => {
-                  const item = ALL_CHECKSHEETS[key];
-                  return item ? (
-                    <div key={key} className="permitted-item">
-                      <span className="permitted-icon">{item.icon}</span>
-                      <div className="permitted-info">
-                        <strong>{item.name}</strong>
-                        <small>{item.desc}</small>
+          <div className="ga-notice ga-notice-warning">
+            <div className="ga-notice-icon">🎯</div>
+            <div className="ga-notice-content">
+              <strong>Akses Terbatas Aktif</strong>
+              <p>Anda memiliki akses ke <strong>{totalAccessible} checksheet</strong>. Hanya checksheet yang diizinkan admin yang ditampilkan.</p>
+              <details className="ga-details">
+                <summary>Lihat daftar checksheet yang diizinkan</summary>
+                <div className="ga-permitted-grid">
+                  {user.checksheets?.map(key => {
+                    const item = ALL_CHECKSHEETS[key]
+                    return item ? (
+                      <div key={key} className="ga-permitted-item">
+                        <span>{item.icon}</span>
+                        <div><strong>{item.name}</strong><small>{item.desc}</small></div>
                       </div>
-                    </div>
-                  ) : null;
-                })}
-              </div>
-            </details>
-          </div>
-        )}
-
-        {/* Admin Banner */}
-        {isAdmin && (
-          <div className="admin-banner" role="status">
-            <span className="admin-banner-icon">👑</span>
-            <div className="admin-banner-content">
-              <strong>Akses Administrator</strong>
-              <p>Anda memiliki akses penuh ke semua {totalAll} checksheet.</p>
+                    ) : null
+                  })}
+                </div>
+              </details>
             </div>
           </div>
         )}
 
-        <div className="ga-checklist-container">
+        {isAdmin && (
+          <div className="ga-notice ga-notice-info">
+            <div className="ga-notice-icon">👑</div>
+            <div className="ga-notice-content">
+              <strong>Akses Administrator</strong>
+              <p>Anda memiliki akses penuh ke semua {totalAll} checksheet yang tersedia.</p>
+            </div>
+          </div>
+        )}
+
+        {/* Categories & Cards */}
+        <div className="ga-groups">
           {displayedCategories.length > 0 ? (
             displayedCategories.map((cat, catIndex) => (
-              <section key={catIndex} className="category-section" aria-labelledby={`cat-title-${catIndex}`}>
-                <h2 id={`cat-title-${catIndex}`} className="category-title">
-                  <span className="category-icon">{cat.icon}</span>
-                  {cat.title}
-                  <span className="category-count">{cat.items.length} checksheet</span>
-                </h2>
-                <div className="checklist-grid">
-                  {cat.items.map((item, itemIdx) => (
-                    <Link 
-                      key={`${catIndex}-${itemIdx}-${item.key}`} 
-                      href={`/status-ga/${item.link}`} 
-                      className="checklist-card"
-                      aria-label={`${item.name}: ${item.desc}`}
-                    >
-                      <div className="card-header">
-                        <span className="card-icon" aria-hidden="true">{item.icon}</span>
-                        <h3 className="card-title">{item.name}</h3>
-                      </div>
-                      <p className="card-desc">{item.desc}</p>
-                      <span className="card-action" aria-hidden="true">
-                        <svg className="arrow-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                          <path d="M5 12h14M12 5l7 7-7 7"/>
+              <section key={catIndex} className="ga-group">
+                <div className="ga-group-heading">
+                  <div className="ga-group-title">
+                    <span className="ga-group-icon">{cat.icon}</span>
+                    <h2>{cat.title}</h2>
+                  </div>
+                  <span className="ga-group-count">{cat.items.length}</span>
+                </div>
+                <div className="ga-card-grid">
+                  {cat.items.map((item, itemIdx) => {
+                    const isExternal = item.link.startsWith("http://") || item.link.startsWith("https://")
+                    const href = isExternal || item.link.startsWith("/") ? item.link : `/status-ga/${item.link}`
+
+                    return (
+                      <Link
+                        key={`${catIndex}-${itemIdx}-${item.key}`}
+                        href={href}
+                        className="ga-check-card"
+                      >
+                        <div className="ga-card-icon">{item.icon}</div>
+                        <div className="ga-card-copy">
+                          <h3>{item.name}</h3>
+                          <p>{item.desc}</p>
+                        </div>
+                        <svg className="ga-card-arrow" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                          <path d="M5 12h14M12 5l7 7-7 7" />
                         </svg>
-                      </span>
-                    </Link> 
-                  ))}
+                      </Link>
+                    )
+                  })}
                 </div>
               </section>
             ))
           ) : (
-            <div className="empty-state" role="alert">
-              <div className="empty-icon">🔒</div>
-              <h3>Tidak Ada Akses Checksheet</h3>
-              <p>Anda belum memiliki akses ke checksheet apa pun.</p>
-              <p className="empty-sub">Hubungi administrator untuk pengaturan permission melalui halaman registrasi.</p>
+            <div className="ga-empty">
+              <div className="ga-empty-icon">🔒</div>
+              <h2>Tidak Ada Akses Checksheet</h2>
+              <p>Hubungi administrator untuk pengaturan permission melalui halaman registrasi.</p>
             </div>
           )}
         </div>
       </main>
 
-      <style jsx>{`
-        /* ── Base Styles ── */
-        :global(.app-page) { display: flex; min-height: 100vh; width: 100%; }
-        .page-content { 
+      <style>{`
+        /* ── Base Layout & Sidebar Sync ── */
+        .ga-app-shell { display: flex; min-height: 100vh; background: #f5f7fa; }
+        .ga-main { 
           flex: 1; 
-          width: 100%; 
+          margin-left: var(--sidebar-w, 70px); 
+          padding: 2rem; 
+          transition: margin-left 0.3s cubic-bezier(0.4, 0, 0.2, 1);
           min-width: 0; 
-          padding: 12px; 
-          background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%); 
-          display: flex; 
-          flex-direction: column; 
-          align-items: stretch; 
         }
-        
-        /* ── Header ── */
-        .header { 
-          display: flex; 
-          flex-direction: column; 
-          gap: 12px; 
-          padding: 14px; 
-          background: linear-gradient(135deg, #0d47a1 0%, #1565c0 100%); 
-          border-radius: 12px; 
-          margin-bottom: 16px; 
-        }
-        .header-left { display: flex; flex-direction: column; gap: 8px; }
-        .header-right { display: flex; flex-direction: column; gap: 10px; align-items: stretch; }
-        .page-title { margin: 0; font-size: 1.25rem; font-weight: 700; color: white; line-height: 1.3; word-break: break-word; }
-        .role-badge { 
-          display: inline-flex; 
-          align-items: center; 
-          background: rgba(255, 255, 255, 0.2); 
-          color: white; 
-          padding: 4px 12px; 
-          border-radius: 20px; 
-          font-size: 0.75rem; 
-          font-weight: 500; 
-          width: fit-content; 
-        }
-        .welcome-text { font-size: 0.9rem; color: white; opacity: 0.95; text-align: center; }
-        .welcome-text strong { font-weight: 600; }
-        
-        /* ── Access Count Badge ── */
-        .access-count {
-          display: inline-flex;
-          align-items: center;
-          gap: 4px;
-          background: rgba(255, 255, 255, 0.15);
+        :global(.sidebar-container.collapsed) ~ .ga-main { margin-left: 70px; }
+        :global(.sidebar-container.expanded) ~ .ga-main { margin-left: 240px; }
+
+        /* ── Hero Header ── */
+        .ga-hero { 
+          display: flex; justify-content: space-between; align-items: flex-start; gap: 2rem;
+          margin-bottom: 2rem; padding: 2.25rem 2rem; 
+          background: linear-gradient(135deg, #0f172a 0%, #1e3a8a 50%, #1e40af 100%); 
           color: white;
-          padding: 6px 12px;
-          border-radius: 8px;
-          font-size: 0.8rem;
-          font-weight: 600;
-          border: 1px solid rgba(255, 255, 255, 0.3);
+          border-radius: 16px;
+          box-shadow: 0 10px 25px rgba(30, 64, 175, 0.22); 
+          border: 1px solid rgba(255, 255, 255, 0.15);
+          position: relative;
+          overflow: hidden;
         }
+        .ga-eyebrow { display: flex; align-items: center; gap: 0.5rem; font-size: 0.875rem; color: #93c5fd; margin-bottom: 0.5rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; }
+        .ga-hero h1 { font-size: 2rem; font-weight: 800; color: #ffffff; margin: 0 0 0.5rem 0; letter-spacing: -0.02em; }
+        .ga-subtitle { color: #e2e8f0; font-size: 0.95rem; line-height: 1.6; margin: 0; max-width: 620px; }
+        .ga-hero-meta { display: flex; flex-direction: column; gap: 0.75rem; align-items: flex-end; flex-shrink: 0; }
+        .ga-role-badge { display: inline-flex; align-items: center; gap: 0.5rem; padding: 0.5rem 1.1rem; background: rgba(255, 255, 255, 0.15); color: #ffffff; border-radius: 999px; font-size: 0.875rem; font-weight: 600; border: 1px solid rgba(255, 255, 255, 0.25); backdrop-filter: blur(8px); }
+        .ga-count-badge { display: inline-flex; align-items: center; padding: 0.5rem 1.1rem; background: rgba(0, 0, 0, 0.25); color: #93c5fd; border-radius: 999px; font-size: 0.875rem; font-weight: 700; border: 1px solid rgba(255, 255, 255, 0.15); backdrop-filter: blur(8px); }
 
-        /* ── Permission Banner ── */
-        .permission-banner {
-          background: linear-gradient(135deg, #fff7ed, #ffedd5);
-          border-left: 4px solid #f97316;
-          border-radius: 12px;
-          padding: 16px;
-          margin-bottom: 20px;
-          box-shadow: 0 2px 8px rgba(249, 115, 22, 0.1);
-        }
-        .permission-banner-header {
-          display: flex;
-          gap: 12px;
-          align-items: flex-start;
-        }
-        .permission-banner-icon { 
-          font-size: 1.5rem; 
-          line-height: 1;
-          flex-shrink: 0;
-        }
-        .permission-banner-content {
-          flex: 1;
-        }
-        .permission-banner-content strong {
-          display: block;
-          color: #c2410c;
-          font-size: 1rem;
-          margin-bottom: 4px;
-        }
-        .permission-banner-content p { 
-          margin: 0; 
-          line-height: 1.5;
-          color: #9a3412;
-          font-size: 0.9rem;
-        }
-        .permission-banner-content strong {
-          color: #c2410c;
-        }
-        
-        .permission-details {
-          margin-top: 12px;
-          padding-top: 12px;
-          border-top: 1px dashed #fdba74;
-        }
-        .permission-details summary {
-          cursor: pointer;
-          color: #c2410c;
-          font-weight: 600;
-          user-select: none;
-          display: flex;
-          align-items: center;
-          justify-content: space-between;
-          padding: 8px 12px;
-          background: rgba(249, 115, 22, 0.1);
-          border-radius: 8px;
-          transition: all 0.2s;
-        }
-        .permission-details summary:hover {
-          background: rgba(249, 115, 22, 0.15);
-        }
-        .permission-details summary span {
-          display: flex;
-          align-items: center;
-          gap: 8px;
-        }
-        .chevron-icon {
-          transition: transform 0.2s;
-        }
-        .permission-details[open] .chevron-icon {
-          transform: rotate(180deg);
-        }
-        
-        .permitted-grid {
-          margin-top: 12px;
-          display: grid;
-          grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-          gap: 8px;
-        }
-        .permitted-item {
-          display: flex;
-          align-items: center;
-          gap: 10px;
-          padding: 10px 12px;
-          background: white;
-          border: 1px solid #fed7aa;
-          border-radius: 8px;
-          transition: all 0.2s;
-        }
-        .permitted-item:hover {
-          border-color: #f97316;
-          box-shadow: 0 2px 6px rgba(249, 115, 22, 0.1);
-        }
-        .permitted-icon {
-          font-size: 1.3rem;
-          flex-shrink: 0;
-        }
-        .permitted-info {
-          display: flex;
-          flex-direction: column;
-          gap: 2px;
-          min-width: 0;
-        }
-        .permitted-info strong {
-          font-size: 0.85rem;
-          color: #1e293b;
-          line-height: 1.3;
-        }
-        .permitted-info small {
-          font-size: 0.75rem;
-          color: #64748b;
-          line-height: 1.3;
-        }
+        /* ── Notice Banners ── */
+        .ga-notice { display: flex; align-items: flex-start; gap: 1rem; padding: 1.25rem; border-radius: 10px; margin-bottom: 1.5rem; border: 1px solid; }
+        .ga-notice-warning { background: #fff7ed; border-color: #fed7aa; }
+        .ga-notice-info { background: #eff6ff; border-color: #bfdbfe; }
+        .ga-notice-icon { font-size: 1.5rem; flex-shrink: 0; line-height: 1; }
+        .ga-notice-content { flex: 1; }
+        .ga-notice-content strong { display: block; font-size: 1rem; margin-bottom: 0.25rem; }
+        .ga-notice-warning .ga-notice-content strong { color: #c2410c; }
+        .ga-notice-info .ga-notice-content strong { color: #1d4ed8; }
+        .ga-notice-content p { margin: 0; font-size: 0.9rem; line-height: 1.5; }
+        .ga-notice-warning .ga-notice-content p { color: #9a3412; }
+        .ga-notice-info .ga-notice-content p { color: #1e40af; }
 
-        /* ── Admin Banner ── */
-        .admin-banner {
-          display: flex;
-          gap: 12px;
-          align-items: center;
-          background: linear-gradient(135deg, #fef3c7, #fde68a);
-          border-left: 4px solid #f59e0b;
-          border-radius: 12px;
-          padding: 16px;
-          margin-bottom: 20px;
-          box-shadow: 0 2px 8px rgba(245, 158, 11, 0.1);
-        }
-        .admin-banner-icon {
-          font-size: 1.5rem;
-          flex-shrink: 0;
-        }
-        .admin-banner-content strong {
-          display: block;
-          color: #92400e;
-          font-size: 1rem;
-          margin-bottom: 4px;
-        }
-        .admin-banner-content p {
-          margin: 0;
-          color: #78350f;
-          font-size: 0.9rem;
-        }
+        /* Details Dropdown */
+        .ga-details { margin-top: 1rem; padding-top: 1rem; border-top: 1px dashed currentColor; opacity: 0.8; }
+        .ga-details summary { cursor: pointer; font-weight: 600; font-size: 0.875rem; display: flex; align-items: center; gap: 0.5rem; transition: opacity 0.2s; }
+        .ga-details summary:hover { opacity: 0.7; }
+        .ga-permitted-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 0.75rem; margin-top: 1rem; }
+        .ga-permitted-item { display: flex; align-items: center; gap: 0.75rem; padding: 0.75rem; background: rgba(255,255,255,0.7); border-radius: 8px; border: 1px solid rgba(0,0,0,0.05); }
+        .ga-permitted-item strong { display: block; font-size: 0.85rem; color: #0f172a; }
+        .ga-permitted-item small { font-size: 0.75rem; color: #64748b; }
 
-        /* ── Checklist Container & Cards ── */
-        .ga-checklist-container { display: flex; flex-direction: column; gap: 16px; width: 100%; }
-        .category-section { 
-          background: white; 
-          border-radius: 12px; 
-          box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08); 
-          padding: 14px 12px; 
-          border-left: 4px solid #1e88e5; 
+        /* ── Groups & Cards ── */
+        .ga-groups { display: flex; flex-direction: column; gap: 2rem; }
+        .ga-group { background: white; border-radius: 12px; padding: 1.5rem; box-shadow: 0 4px 16px rgba(0, 0, 0, 0.05); border: 1px solid #e2e8f0; }
+        .ga-group-heading { 
+          display: flex; 
+          justify-content: space-between; 
+          align-items: center; 
+          margin-bottom: 1.5rem; 
+          padding: 1rem 1.25rem; 
+          background: linear-gradient(135deg, #1e40af 0%, #2563eb 100%); 
+          border-radius: 10px;
+          color: white;
+          box-shadow: 0 4px 14px rgba(30, 64, 175, 0.2);
         }
-        .category-title { 
-          margin: 0 0 12px; 
-          color: #0d47a1; 
-          font-size: 1rem; 
-          font-weight: 700; 
-          border-bottom: 2px solid #e3f2fd; 
-          padding-bottom: 10px; 
+        .ga-group-title { display: flex; align-items: center; gap: 0.75rem; margin: 0; }
+        .ga-group-icon { 
+          font-size: 1.35rem; 
           display: flex; 
           align-items: center; 
-          gap: 8px; 
-          line-height: 1.3; 
-          flex-wrap: wrap;
+          justify-content: center;
+          width: 2.5rem; 
+          height: 2.5rem; 
+          background: rgba(255, 255, 255, 0.2); 
+          border-radius: 8px;
+          backdrop-filter: blur(4px);
         }
-        .category-icon {
-          font-size: 1.2rem;
-          flex-shrink: 0;
-        }
-        .category-count {
-          margin-left: auto;
-          font-size: 0.75rem;
-          font-weight: 500;
-          color: #64748b;
-          background: #f1f5f9;
-          padding: 4px 10px;
-          border-radius: 12px;
-        }
-        .checklist-grid { display: grid; grid-template-columns: 1fr; gap: 10px; }
-        .checklist-card { 
+        .ga-group-title h2 { font-size: 1.15rem; font-weight: 700; color: #ffffff; margin: 0; }
+        .ga-group-count { 
           display: flex; 
-          flex-direction: column; 
-          justify-content: space-between; 
-          text-decoration: none; 
-          background: linear-gradient(135deg, #f8f9fa 0%, #ffffff 100%); 
-          border: 2px solid #e8eef7; 
-          border-radius: 10px; 
-          padding: 12px; 
-          transition: all 0.2s ease; 
-          position: relative; 
-          overflow: hidden; 
-          min-height: 90px; 
-        }
-        .checklist-card:hover { 
-          background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%); 
-          border-color: #1e88e5; 
-          transform: translateY(-2px); 
-          box-shadow: 0 4px 16px rgba(30, 136, 229, 0.15); 
-        }
-        .card-header { 
-          display: flex; 
-          align-items: flex-start; 
-          gap: 8px; 
-          margin-bottom: 6px; 
-          min-width: 0; 
-        }
-        .card-icon { 
-          font-size: 1.3rem; 
-          flex-shrink: 0; 
-          line-height: 1; 
-        }
-        .card-title { 
-          font-size: 0.9rem; 
-          color: #1a237e; 
+          align-items: center; 
+          justify-content: center; 
+          min-width: 2.5rem; 
+          height: 2.5rem; 
+          padding: 0 0.75rem;
+          background: rgba(255, 255, 255, 0.22); 
+          border-radius: 8px; 
           font-weight: 700; 
-          line-height: 1.3; 
-          word-break: break-word; 
-          overflow-wrap: break-word; 
-          margin: 0; 
-          flex: 1; 
-          min-width: 0; 
+          color: #ffffff; 
+          font-size: 0.9rem; 
+          border: 1px solid rgba(255, 255, 255, 0.3);
+          backdrop-filter: blur(4px);
         }
-        .card-desc { 
-          font-size: 0.75rem; 
-          color: #666; 
-          line-height: 1.4; 
-          margin: 0 0 8px 32px; 
-          word-break: break-word; 
-          overflow-wrap: break-word; 
+
+        .ga-card-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 1rem; }
+        .ga-check-card { 
+          display: flex; align-items: center; gap: 1rem; padding: 1.25rem; 
+          background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; 
+          text-decoration: none; transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1); 
         }
-        .card-action { 
-          display: flex; 
-          justify-content: flex-end; 
-          margin-left: 32px; 
-          margin-top: auto; 
+        .ga-check-card:hover { 
+          background: white; border-color: #3b82f6; 
+          transform: translateY(-3px); box-shadow: 0 8px 20px rgba(59, 130, 246, 0.12); 
         }
-        .arrow-icon { 
-          color: #1e88e5; 
-          opacity: 0.7; 
-          transition: all 0.2s ease; 
-          flex-shrink: 0; 
-        }
-        .checklist-card:hover .arrow-icon { 
-          opacity: 1; 
-          transform: translateX(2px); 
-        }
+        .ga-card-icon { font-size: 1.5rem; flex-shrink: 0; width: 3rem; height: 3rem; display: flex; align-items: center; justify-content: center; background: white; border-radius: 8px; border: 1px solid #e2e8f0; }
+        .ga-check-card:hover .ga-card-icon { border-color: #3b82f6; background: #eff6ff; }
+        .ga-card-copy { flex: 1; min-width: 0; }
+        .ga-card-copy h3 { font-size: 0.95rem; font-weight: 700; color: #1e40af; margin: 0 0 0.25rem 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; transition: color 0.2s ease; }
+        .ga-check-card:hover .ga-card-copy h3 { color: #2563eb; }
+        .ga-card-copy p { font-size: 0.8rem; color: #64748b; line-height: 1.4; margin: 0; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+        .ga-card-arrow { color: #94a3b8; flex-shrink: 0; transition: all 0.25s ease; }
+        .ga-check-card:hover .ga-card-arrow { color: #3b82f6; transform: translateX(4px); }
 
         /* ── Empty State ── */
-        .empty-state { 
-          text-align: center; 
-          padding: 48px 24px; 
-          background: white; 
-          border-radius: 12px; 
-          border: 2px dashed #cbd5e1; 
-          color: #64748b; 
-        }
-        .empty-icon {
-          font-size: 3rem;
-          margin-bottom: 16px;
-          opacity: 0.5;
-        }
-        .empty-state h3 {
-          margin: 0 0 8px;
-          color: #334155;
-          font-size: 1.2rem;
-        }
-        .empty-state p { 
-          margin: 8px 0; 
-          font-size: 0.95rem; 
-        }
-        .empty-sub { 
-          font-size: 0.85rem; 
-          color: #94a3b8; 
+        .ga-empty { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 4rem 2rem; text-align: center; background: white; border-radius: 12px; border: 2px dashed #cbd5e1; }
+        .ga-empty-icon { font-size: 3rem; margin-bottom: 1rem; opacity: 0.5; }
+        .ga-empty h2 { font-size: 1.25rem; color: #334155; margin: 0 0 0.5rem 0; }
+        .ga-empty p { color: #64748b; font-size: 0.95rem; margin: 0; }
+
+        /* ── Responsive Breakpoints ── */
+        @media (max-width: 1024px) {
+          .ga-main { margin-left: var(--sidebar-w, 70px); padding: 1.5rem; }
+          .ga-hero { flex-direction: column; gap: 1.5rem; }
+          .ga-hero-meta { align-items: flex-start; flex-direction: row; }
+          .ga-card-grid { grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); }
         }
 
-        /* ── Responsive ── */
-        @media (min-width: 480px) {
-          .page-content { padding: 16px; }
-          .header { 
-            flex-direction: row; 
-            align-items: center; 
-            justify-content: space-between; 
-            gap: 12px; 
-            padding: 16px; 
-          }
-          .header-left { flex: 1; min-width: 0; }
-          .header-right { 
-            flex-direction: row; 
-            align-items: center; 
-            justify-content: flex-end; 
-            gap: 12px; 
-            flex-wrap: wrap; 
-          }
-          .page-title { font-size: 1.35rem; }
-          .welcome-text { text-align: right; font-size: 0.9rem; }
-          .access-count { font-size: 0.8rem; padding: 6px 14px; }
-          .category-section { padding: 18px 16px; border-radius: 14px; }
-          .category-title { font-size: 1.1rem; margin-bottom: 14px; }
-          .checklist-grid { grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; }
-          .checklist-card { padding: 14px; min-height: 100px; border-radius: 12px; }
-          .card-title { font-size: 0.95rem; }
-          .card-desc { font-size: 0.8rem; margin-left: 36px; }
-          .card-icon { font-size: 1.4rem; }
-          .permitted-grid { grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); }
+        @media (max-width: 768px) {
+          .ga-app-shell { flex-direction: column; }
+          .ga-main { margin-left: 0 !important; padding: 1rem; width: 100%; }
+          .ga-hero { padding: 1.5rem; }
+          .ga-hero h1 { font-size: 1.5rem; }
+          .ga-card-grid { grid-template-columns: 1fr; }
+          .ga-group { padding: 1.25rem; }
+          .ga-group-heading { flex-direction: column; align-items: flex-start; gap: 0.75rem; }
+          .ga-permitted-grid { grid-template-columns: 1fr; }
         }
-        
-        @media (min-width: 768px) {
-          .page-content { margin-left: 72px; padding: 20px 24px; }
-          :global(body.sidebar-expanded) .page-content { margin-left: 240px; }
-          .header { padding: 20px 24px; margin-bottom: 24px; border-radius: 14px; }
-          .page-title { font-size: 1.5rem; }
-          .welcome-text { font-size: 0.95rem; }
-          .ga-checklist-container { gap: 24px; }
-          .category-section { padding: 24px 20px; border-radius: 16px; border-left-width: 5px; }
-          .category-title { font-size: 1.25rem; margin-bottom: 18px; padding-bottom: 12px; }
-          .checklist-grid { grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; }
-          .checklist-card { padding: 16px; min-height: 110px; border-radius: 14px; }
-          .card-header { gap: 10px; }
-          .card-title { font-size: 1rem; }
-          .card-desc { font-size: 0.85rem; margin-left: 40px; }
-          .card-icon { font-size: 1.5rem; }
-          .arrow-icon { opacity: 0; transform: translateX(-4px); }
-          .checklist-card:hover .arrow-icon { opacity: 1; transform: translateX(0); }
-          .permitted-grid { grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); }
+
+        @media (max-width: 480px) {
+          .ga-main { padding: 0.75rem; }
+          .ga-hero { padding: 1.25rem; }
+          .ga-hero h1 { font-size: 1.25rem; }
+          .ga-subtitle { font-size: 0.85rem; }
+          .ga-check-card { padding: 1rem; }
+          .ga-card-icon { width: 2.5rem; height: 2.5rem; font-size: 1.25rem; }
+          .ga-card-copy h3 { font-size: 0.9rem; }
         }
-        
-        @media (min-width: 1024px) {
-          .page-content { padding: 28px 32px; }
-          .header { padding: 24px 32px; margin-bottom: 32px; border-radius: 16px; }
-          .page-title { font-size: 1.65rem; }
-          .welcome-text { font-size: 1rem; }
-          .category-section { padding: 28px 24px; }
-          .category-title { font-size: 1.4rem; }
-          .checklist-grid { grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 20px; }
-          .checklist-card { padding: 20px; min-height: 120px; }
-          .card-title { font-size: 1.05rem; }
-          .card-desc { font-size: 0.9rem; }
-          .card-icon { font-size: 1.6rem; }
-          .permitted-grid { grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); }
-        }
-        
-        @media (min-width: 1400px) {
-          .page-content { max-width: 1400px; margin: 0 auto 0 72px; padding: 32px 40px; }
-          :global(body.sidebar-expanded) .page-content { margin-left: 240px; }
-          .checklist-grid { grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); }
-          .category-section { padding: 32px 28px; }
-          .category-title { font-size: 1.5rem; }
-          .permitted-grid { grid-template-columns: repeat(auto-fill, minmax(360px, 1fr)); }
-        }
-        
-        *, *::before, *::after { box-sizing: border-box; }
-        img, svg, video { max-width: 100%; height: auto; display: block; }
-        html, body { overflow-x: hidden; width: 100%; min-width: 0; }
-        .checklist-card:focus-visible { outline: 3px solid #1e88e5; outline-offset: 2px; }
-        html { scroll-behavior: smooth; }
-        .card-icon, .arrow-icon { user-select: none; }
       `}</style>
     </div>
   )

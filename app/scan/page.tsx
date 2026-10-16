@@ -279,6 +279,8 @@ function buildTargetUrl(result: string): string | null {
       "form-inspeksi-stop-kontak": () =>
         `/status-ga/form-inspeksi-stop-kontak/${encodeURIComponent(pathPart.replace("form-inspeksi-stop-kontak/", ""))}`,
 
+      "power-house": () => `/status-ga/power-house`,
+
       "ga-inf-jalan": () => {
         const v = p.get("search");
         return v ? `/status-ga/ga-inf-jalan?search=${encodeURIComponent(v)}` : "";

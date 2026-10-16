@@ -21,7 +21,7 @@ const VALID_CHECKSHEET_KEYS = [
   "hydrant", "selang-hydrant", "fire-alarm", "smoke-detector", "apar",
   "emergency-lamp", "exit-lamp-pintu-darurat", "lift-barang",
   "inspeksi-preventif-lift-barang", "tg-listrik", "panel",
-  "form-inspeksi-stop-kontak", "e-checksheet-apd", "inf-jalan",
+  "form-inspeksi-stop-kontak", "power-house", "e-checksheet-apd", "inf-jalan",
   "inspeksi-apd", "checksheet-toilet"
 ];
 

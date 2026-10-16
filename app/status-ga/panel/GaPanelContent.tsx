@@ -344,6 +344,119 @@ export function GaPanelContent() {
           </div>
         )}
 
+        {/* ── Rekapitulasi Status Inspeksi Panel ── */}
+        {(() => {
+          const inspectedCount = areas.filter(a => {
+            const st = areaStatuses[a.id];
+            return st && (st.statusLabel === "Checked" || st.statusLabel === "OK" || st.statusLabel === "Sudah Diinspeksi");
+          }).length;
+          const notInspectedCount = areas.length - inspectedCount;
+          return (
+            <div style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
+              gap: "14px",
+              marginBottom: "20px"
+            }}>
+              <div style={{
+                background: "#ffffff",
+                border: "1px solid #e2e8f0",
+                borderRadius: "10px",
+                padding: "16px 20px",
+                boxShadow: "0 1px 3px rgba(0,0,0,0.05)",
+                display: "flex",
+                alignItems: "center",
+                gap: "14px"
+              }}>
+                <div style={{
+                  width: "44px",
+                  height: "44px",
+                  borderRadius: "10px",
+                  background: "#eff6ff",
+                  color: "#1d4ed8",
+                  display: "grid",
+                  placeItems: "center",
+                  fontSize: "20px"
+                }}>
+                  📋
+                </div>
+                <div>
+                  <div style={{ fontSize: "12px", color: "#64748b", fontWeight: "600", textTransform: "uppercase", letterSpacing: "0.03em" }}>
+                    Total Unit Panel
+                  </div>
+                  <div style={{ fontSize: "24px", fontWeight: "800", color: "#0f172a" }}>
+                    {areas.length}
+                  </div>
+                </div>
+              </div>
+
+              <div style={{
+                background: "#ffffff",
+                border: "1px solid #bbf7d0",
+                borderRadius: "10px",
+                padding: "16px 20px",
+                boxShadow: "0 1px 3px rgba(0,0,0,0.05)",
+                display: "flex",
+                alignItems: "center",
+                gap: "14px"
+              }}>
+                <div style={{
+                  width: "44px",
+                  height: "44px",
+                  borderRadius: "10px",
+                  background: "#f0fdf4",
+                  color: "#16a34a",
+                  display: "grid",
+                  placeItems: "center",
+                  fontSize: "20px"
+                }}>
+                  ✅
+                </div>
+                <div>
+                  <div style={{ fontSize: "12px", color: "#16a34a", fontWeight: "600", textTransform: "uppercase", letterSpacing: "0.03em" }}>
+                    Sudah Diinspeksi
+                  </div>
+                  <div style={{ fontSize: "24px", fontWeight: "800", color: "#15803d" }}>
+                    {inspectedCount}
+                  </div>
+                </div>
+              </div>
+
+              <div style={{
+                background: "#ffffff",
+                border: "1px solid #fed7aa",
+                borderRadius: "10px",
+                padding: "16px 20px",
+                boxShadow: "0 1px 3px rgba(0,0,0,0.05)",
+                display: "flex",
+                alignItems: "center",
+                gap: "14px"
+              }}>
+                <div style={{
+                  width: "44px",
+                  height: "44px",
+                  borderRadius: "10px",
+                  background: "#fff7ed",
+                  color: "#ea580c",
+                  display: "grid",
+                  placeItems: "center",
+                  fontSize: "20px"
+                }}>
+                  ⏳
+                </div>
+                <div>
+                  <div style={{ fontSize: "12px", color: "#c2410c", fontWeight: "600", textTransform: "uppercase", letterSpacing: "0.03em" }}>
+                    Belum Diinspeksi
+                  </div>
+                  <div style={{ fontSize: "24px", fontWeight: "800", color: "#9a3412" }}>
+                    {notInspectedCount}
+                  </div>
+                </div>
+              </div>
+            </div>
+          );
+        })()}
+
         {/* Table */}
         <div style={{
           background: "white",

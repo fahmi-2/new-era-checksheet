@@ -12,6 +12,15 @@ export const metadata: Metadata = {
   description: "Sistem manajemen checklist elektronik untuk PT JAI",
   generator: "Next.js",
   manifest: "/e-checksheet-ga/manifest.json", // ✅ Link ke manifest dengan basePath
+  icons: {
+    icon: [
+      { url: "/e-checksheet-ga/favicon.ico" },
+      { url: "/e-checksheet-ga/icon-192.png", sizes: "192x192", type: "image/png" },
+    ],
+    apple: [
+      { url: "/e-checksheet-ga/apple-touch-icon.png", sizes: "180x180", type: "image/png" },
+    ],
+  },
   appleWebApp: {
     capable: true,
     statusBarStyle: "black-translucent",
@@ -35,16 +44,18 @@ export default function RootLayout({
   children: React.ReactNode
 }>) {
   return (
-    <html lang="id">
+    <html lang="id" className="bg-background">
       <head>
         <meta charSet="utf-8" />
         <meta name="theme-color" content="#1e88e5" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
         <meta name="apple-mobile-web-app-title" content="E-Checksheet" />
+        <link rel="icon" href="/e-checksheet-ga/favicon.ico" sizes="any" />
+        <link rel="icon" href="/e-checksheet-ga/icon-192.png" type="image/png" />
         {/* ✅ Link manifest dengan basePath */}
         <link rel="manifest" href="/e-checksheet-ga/manifest.json" />
-        <link rel="apple-touch-icon" href="/e-checksheet-ga/icon-192.png" />
+        <link rel="apple-touch-icon" href="/e-checksheet-ga/apple-touch-icon.png" />
       </head>
       <body className={`font-sans antialiased`}>
         <AuthProvider>

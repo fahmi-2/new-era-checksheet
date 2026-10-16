@@ -6,15 +6,15 @@ import { useAuth, isAuthorizedForChecksheet } from "@/lib/auth-context";
 import { Sidebar } from "@/components/Sidebar";
 import { useConnection } from "@/lib/connection-context";
 import { smartFetch } from "@/lib/smart-fetch";
-import { ArrowLeft, QrCode } from "lucide-react";
+import { ArrowLeft, QrCode, Settings, Plus, Trash2, Edit2, ShieldAlert, ListChecks } from "lucide-react";
 import { format, parse, isBefore, isValid } from "date-fns";
 import { aparDataBySlug, type AparDataItem } from "@/lib/apar-data";
 
-// ✅ TAMBAHKAN IMPORTS INI UNTUK SCAN VERIFICATION
+// ✅ HOOK SCAN VERIFICATION
 import { useScanVerification } from "@/lib/hooks/useScanVerification";
 import { ScanAreaRequired } from "@/components/ScanAreaRequired";
 
-const areaNames: Record<string, string> = {
+const DEFAULT_AREA_NAMES: Record<string, string> = {
   "area-locker-security": "AREA LOCKER & SECURITY",
   "area-kantin": "AREA KANTIN",
   "area-auditorium": "AREA AUDITORIUM",
@@ -47,7 +47,13 @@ const areaNames: Record<string, string> = {
   "mesin-raychem-genba-c": "MESIN RAYCHEM GENBA C",
 };
 
-const checkItems = [
+export interface CheckItemDef {
+  label: string;
+  short: string;
+  help: string;
+}
+
+const DEFAULT_CHECK_ITEMS: CheckItemDef[] = [
   { label: "Masa Berlaku", short: "Masa", help: "Lihat identitas APAR apakah masih berlaku" },
   { label: "Tekanan", short: "Tekanan", help: "Jarum tekanan di warna hijau" },
   { label: "Isi Tabung", short: "Isi", help: "Isi APAR tidak menggumpal" },
@@ -67,13 +73,16 @@ export default function InspeksiAparForm({ params }: { params: Promise<{ slug: s
   const { user } = useAuth();
   const { slug } = use(params);
 
-  // ✅ TAMBAHKAN HOOK INI UNTUK SCAN VERIFICATION
-  const { isScanned, isLoading: scanLoading } = useScanVerification();
+  // Scan Verification & Admin check
+  const { isScanned, isLoading: scanLoading, isAdminView } = useScanVerification();
+  const isAdmin = isAdminView || !!(user && ["admin", "superadmin"].includes(user.role));
   const { isOnline, pendingCount } = useConnection();
   
   const today = new Date();
   const date = format(today, "yyyy-MM-dd");
 
+  const [areaNames, setAreaNames] = useState<Record<string, string>>(DEFAULT_AREA_NAMES);
+  const [checkItems, setCheckItems] = useState<CheckItemDef[]>(DEFAULT_CHECK_ITEMS);
   const [items, setItems] = useState<any[]>([]);
   const [showPreview, setShowPreview] = useState(false);
   const [hasNg, setHasNg] = useState(false);
@@ -84,6 +93,33 @@ export default function InspeksiAparForm({ params }: { params: Promise<{ slug: s
   const [showLoadMaster, setShowLoadMaster] = useState(false);
   const [masterData, setMasterData] = useState<AparDataItem[]>([]);
   const [loadingMaster, setLoadingMaster] = useState(false);
+
+  // Admin Master Modals State
+  const [showUnitManagerModal, setShowUnitManagerModal] = useState(false);
+  const [showCriteriaModal, setShowCriteriaModal] = useState(false);
+  const [showAreaNameModal, setShowAreaNameModal] = useState(false);
+  const [editableUnits, setEditableUnits] = useState<AparDataItem[]>([]);
+  const [editableCriteria, setEditableCriteria] = useState<CheckItemDef[]>([]);
+  const [editableAreaTitle, setEditableAreaTitle] = useState("");
+  const [isSavingMaster, setIsSavingMaster] = useState(false);
+
+  // Parse date strings in various formats to Date object
+  const parseExpDate = (dateStr: string | null | undefined): Date | null => {
+    if (!dateStr || typeof dateStr !== 'string') return null;
+    const cleanStr = dateStr.trim();
+    if (!cleanStr) return null;
+
+    if (/^\d{4}-\d{2}-\d{2}$/.test(cleanStr)) {
+      const parsed = parse(cleanStr, "yyyy-MM-dd", new Date());
+      if (isValid(parsed)) return parsed;
+    }
+    const formats = ["d/M/yyyy", "dd/MM/yyyy", "d-M-yyyy", "dd-MM-yyyy"];
+    for (const fmt of formats) {
+      const parsed = parse(cleanStr, fmt, new Date());
+      if (isValid(parsed)) return parsed;
+    }
+    return null;
+  };
 
   // Konversi dari format dd/MM/yyyy ke yyyy-MM-dd (untuk date picker)
   const formatDateForInput = (dateStr: string | null | undefined): string => {
@@ -107,95 +143,75 @@ export default function InspeksiAparForm({ params }: { params: Promise<{ slug: s
     }
   }, [user, router, redirected]);
 
+  // Load Initial Form Data + Master Data
   useEffect(() => {
-    const areaName = areaNames[slug];
-    if (!areaName) {
-      alert("Area tidak ditemukan!");
-      router.push("/status-ga/inspeksi-apar");
-      return;
-    }
-    const rawData: AparDataItem[] = aparDataBySlug[slug as keyof typeof aparDataBySlug] || [];
-    const initialItems = rawData.map((item) => ({
-      no: item.no,
-      jenisApar: item.jenisApar,
-      lokasi: item.lokasi,
-      noApar: item.noApar,
-      expDate: item.expDate,
-      hydrotestDate: item.hydrotestDate || "",
-      expDateInput: formatDateForInput(item.expDate),
-      hydrotestDateInput: formatDateForInput(item.hydrotestDate),
-      ...Object.fromEntries(checkItems.map((_, idx) => [`check${idx + 1}`, "OK"])),
-      keterangan: "",
-      tindakanPerbaikan: "",
-      pic: user?.fullName || "",
-      foto: "",
-    }));
-    setItems(initialItems);
-    
-    const autoLoadMasterData = async () => {
+    const loadMasterAndForm = async () => {
+      const rawData: AparDataItem[] = aparDataBySlug[slug as keyof typeof aparDataBySlug] || [];
+      let currentCheck = DEFAULT_CHECK_ITEMS;
+
+      const initialItems = rawData.map((item) => ({
+        no: item.no,
+        jenisApar: item.jenisApar,
+        lokasi: item.lokasi,
+        noApar: item.noApar,
+        expDate: item.expDate,
+        hydrotestDate: item.hydrotestDate || "",
+        expDateInput: formatDateForInput(item.expDate),
+        hydrotestDateInput: formatDateForInput(item.hydrotestDate),
+        ...Object.fromEntries(currentCheck.map((_, idx) => [`check${idx + 1}`, "OK"])),
+        keterangan: "",
+        tindakanPerbaikan: "",
+        pic: user?.fullName || "",
+        foto: "",
+      }));
+      setItems(initialItems);
+
       try {
-        const response = await smartFetch(`/e-checksheet-ga/api/apar/master?slug=${slug}`, {
-          queueType: 'apar',
-          metadata: { areaCode: 'apar' }
-        });
-        const result = await response.json();
-        
-        if (response.ok && result.success && result.data && result.data.length > 0) {
-          const masterData = result.data;
-          let newItems;
-          
-          if (masterData.length > initialItems.length) {
-            newItems = masterData.map((m: any, idx: number) => ({
-              no: idx + 1,
-              jenisApar: m.jenisApar || '',
-              lokasi: m.lokasi || '',
-              noApar: m.noApar || '',
-              expDate: m.expDate || '',
-              expDateInput: formatDateForInput(m.expDate),
-              hydrotestDate: m.hydrotestDate || '',
-              hydrotestDateInput: formatDateForInput(m.hydrotestDate),
-              ...Object.fromEntries(checkItems.map((_, i) => [`check${i + 1}`, 'OK'])),
-              keterangan: '',
-              tindakanPerbaikan: '',
-              pic: user?.fullName || '',
-              foto: '',
-            }));
-          } else {
-            newItems = initialItems.map((item) => {
-              const masterItem = masterData.find((m: any) => m.noApar === item.noApar);
-              if (masterItem) {
-                return {
-                  ...item,
-                  jenisApar: masterItem.jenisApar || item.jenisApar,
-                  lokasi: masterItem.lokasi || item.lokasi,
-                  expDate: masterItem.expDate || item.expDate,
-                  expDateInput: formatDateForInput(masterItem.expDate),
-                  hydrotestDate: masterItem.hydrotestDate || item.hydrotestDate,
-                  hydrotestDateInput: formatDateForInput(masterItem.hydrotestDate),
-                };
-              }
-              return item;
-            });
+        const res = await fetch(`/api/apar/master?slug=${slug}&_t=${Date.now()}`);
+        if (res.ok) {
+          const result = await res.json();
+          if (result.success) {
+            if (result.checkItems && Array.isArray(result.checkItems) && result.checkItems.length > 0) {
+              setCheckItems(result.checkItems);
+              currentCheck = result.checkItems;
+            }
+            if (result.areaName) {
+              setAreaNames(prev => ({ ...prev, [slug]: result.areaName }));
+            }
+
+            if (result.data && Array.isArray(result.data) && result.data.length > 0) {
+              const masterUnits: AparDataItem[] = result.data;
+              const newItems = masterUnits.map((m: any, idx: number) => ({
+                no: idx + 1,
+                jenisApar: m.jenisApar || '',
+                lokasi: m.lokasi || '',
+                noApar: m.noApar || '',
+                expDate: m.expDate || '',
+                expDateInput: formatDateForInput(m.expDate),
+                hydrotestDate: m.hydrotestDate || '',
+                hydrotestDateInput: formatDateForInput(m.hydrotestDate),
+                ...Object.fromEntries(currentCheck.map((_, i) => [`check${i + 1}`, 'OK'])),
+                keterangan: '',
+                tindakanPerbaikan: '',
+                pic: user?.fullName || '',
+                foto: '',
+              }));
+              setItems(newItems);
+            }
           }
-          
-          setItems(newItems);
-          console.log(`✅ Auto-load master data berhasil: ${masterData.length} item diterapkan`);
         }
-      } catch (error) {
-        console.error('Auto-load master error:', error);
+      } catch (err) {
+        console.warn("Auto load master APAR error:", err);
       }
     };
-    
-    autoLoadMasterData();
+
+    loadMasterAndForm();
   }, [slug, user]);
 
   const loadMasterData = async () => {
     try {
       setLoadingMaster(true);
-      const response = await smartFetch(`/e-checksheet-ga/api/apar/master?slug=${slug}`, {
-        queueType: 'apar',
-        metadata: { areaCode: 'apar' }
-      });
+      const response = await fetch(`/api/apar/master?slug=${slug}&_t=${Date.now()}`);
       const result = await response.json();
 
       if (response.ok && result.success) {
@@ -203,7 +219,7 @@ export default function InspeksiAparForm({ params }: { params: Promise<{ slug: s
           setMasterData(result.data);
           setShowLoadMaster(true);
         } else {
-          alert('⚠️ Data master belum tersedia untuk area ini. Silakan lakukan inspeksi terlebih dahulu.');
+          alert('⚠️ Data master belum tersedia untuk area ini.');
         }
       } else {
         alert('⚠️ Gagal memuat data master: ' + (result.message || 'Error tidak diketahui'));
@@ -219,26 +235,204 @@ export default function InspeksiAparForm({ params }: { params: Promise<{ slug: s
   const applyMasterData = () => {
     if (masterData.length === 0) return;
 
-    const newItems = items.map((item, index) => {
-      const masterItem = masterData.find(m => m.noApar === item.noApar);
-      if (masterItem) {
-        return {
-          ...item,
-          jenisApar: masterItem.jenisApar || item.jenisApar,
-          lokasi: masterItem.lokasi || item.lokasi,
-          expDate: masterItem.expDate || item.expDate,
-          expDateInput: formatDateForInput(masterItem.expDate),
-          hydrotestDate: masterItem.hydrotestDate || item.hydrotestDate,
-          hydrotestDateInput: formatDateForInput(masterItem.hydrotestDate),
-        };
-      }
-      return item;
-    });
+    const newItems = masterData.map((m, idx) => ({
+      no: idx + 1,
+      jenisApar: m.jenisApar || '',
+      lokasi: m.lokasi || '',
+      noApar: m.noApar || '',
+      expDate: m.expDate || '',
+      expDateInput: formatDateForInput(m.expDate),
+      hydrotestDate: m.hydrotestDate || '',
+      hydrotestDateInput: formatDateForInput(m.hydrotestDate),
+      ...Object.fromEntries(checkItems.map((_, i) => [`check${i + 1}`, 'OK'])),
+      keterangan: '',
+      tindakanPerbaikan: '',
+      pic: user?.fullName || '',
+      foto: '',
+    }));
 
     setItems(newItems);
     setShowLoadMaster(false);
     setMasterData([]);
     alert('✅ Data master berhasil diterapkan ke form!');
+  };
+
+  // ─── ADMIN MASTER MANAGEMENT HANDLERS ───────────────────
+  const openUnitManager = () => {
+    const currentUnits: AparDataItem[] = items.map(item => ({
+      no: item.no,
+      jenisApar: item.jenisApar,
+      lokasi: item.lokasi,
+      noApar: item.noApar,
+      expDate: item.expDate,
+      hydrotestDate: item.hydrotestDate || ""
+    }));
+    setEditableUnits(JSON.parse(JSON.stringify(currentUnits)));
+    setShowUnitManagerModal(true);
+  };
+
+  const handleAddUnitRow = () => {
+    const nextNo = editableUnits.length + 1;
+    setEditableUnits(prev => [
+      ...prev,
+      {
+        no: nextNo,
+        jenisApar: "GAS CAIR 6 kg",
+        lokasi: "LOKASI BARU",
+        noApar: `${nextNo}`,
+        expDate: "10/5/2030",
+        hydrotestDate: ""
+      }
+    ]);
+  };
+
+  const handleRemoveUnitRow = (index: number) => {
+    if (editableUnits.length <= 1) {
+      alert("Minimal harus ada 1 unit APAR!");
+      return;
+    }
+    setEditableUnits(prev => prev.filter((_, i) => i !== index).map((it, idx) => ({ ...it, no: idx + 1 })));
+  };
+
+  const handleUnitChange = (index: number, field: keyof AparDataItem, value: any) => {
+    setEditableUnits(prev => {
+      const copy = [...prev];
+      copy[index] = { ...copy[index], [field]: value };
+      return copy;
+    });
+  };
+
+  const handleSaveMasterUnits = async () => {
+    try {
+      setIsSavingMaster(true);
+      const renumbered = editableUnits.map((u, idx) => ({ ...u, no: idx + 1 }));
+
+      const res = await fetch("/api/apar/master", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          slug,
+          itemsForSlug: renumbered,
+          updated_by: user?.fullName || "admin"
+        })
+      });
+
+      const json = await res.json();
+      if (!res.ok || !json.success) throw new Error(json.message || "Gagal menyimpan master unit APAR");
+
+      // Update formulir aktif
+      const updatedFormItems = renumbered.map((m, idx) => {
+        const existing = items.find(it => it.noApar === m.noApar) || {};
+        return {
+          ...existing,
+          no: idx + 1,
+          jenisApar: m.jenisApar,
+          lokasi: m.lokasi,
+          noApar: m.noApar,
+          expDate: m.expDate,
+          expDateInput: formatDateForInput(m.expDate),
+          hydrotestDate: m.hydrotestDate || "",
+          hydrotestDateInput: formatDateForInput(m.hydrotestDate),
+          ...Object.fromEntries(checkItems.map((_, i) => [`check${i + 1}`, existing[`check${i + 1}`] || 'OK'])),
+          keterangan: existing.keterangan || '',
+          tindakanPerbaikan: existing.tindakanPerbaikan || '',
+          pic: existing.pic || user?.fullName || '',
+          foto: existing.foto || '',
+        };
+      });
+
+      setItems(updatedFormItems);
+      setShowUnitManagerModal(false);
+      alert("✅ Master Unit APAR untuk area ini berhasil disimpan dan diperbarui untuk semua inspector!");
+    } catch (err: any) {
+      alert(`❌ Gagal menyimpan master unit: ${err.message}`);
+    } finally {
+      setIsSavingMaster(false);
+    }
+  };
+
+  // Kriteria Point Pemeriksaan Manager
+  const openCriteriaManager = () => {
+    setEditableCriteria(JSON.parse(JSON.stringify(checkItems)));
+    setShowCriteriaModal(true);
+  };
+
+  const handleAddCriteriaRow = () => {
+    const nextNo = editableCriteria.length + 1;
+    setEditableCriteria(prev => [
+      ...prev,
+      { label: `Pemeriksaan ${nextNo}`, short: `C${nextNo}`, help: `Deskripsi pemeriksaan ${nextNo}` }
+    ]);
+  };
+
+  const handleRemoveCriteriaRow = (index: number) => {
+    if (editableCriteria.length <= 1) {
+      alert("Minimal harus ada 1 point kriteria pemeriksaan!");
+      return;
+    }
+    setEditableCriteria(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const handleSaveMasterCriteria = async () => {
+    try {
+      setIsSavingMaster(true);
+      const res = await fetch("/api/apar/master", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          checkItems: editableCriteria,
+          updated_by: user?.fullName || "admin"
+        })
+      });
+
+      const json = await res.json();
+      if (!res.ok || !json.success) throw new Error(json.message || "Gagal menyimpan kriteria pemeriksaan");
+
+      setCheckItems(editableCriteria);
+      setShowCriteriaModal(false);
+      alert("✅ Point kriteria pemeriksaan APAR berhasil diperbarui untuk seluruh sistem!");
+    } catch (err: any) {
+      alert(`❌ Gagal menyimpan kriteria: ${err.message}`);
+    } finally {
+      setIsSavingMaster(false);
+    }
+  };
+
+  // Edit Area Name Manager
+  const openAreaNameManager = () => {
+    setEditableAreaTitle(areaNames[slug] || slug.toUpperCase());
+    setShowAreaNameModal(true);
+  };
+
+  const handleSaveMasterAreaName = async () => {
+    if (!editableAreaTitle.trim()) {
+      alert("Nama area tidak boleh kosong!");
+      return;
+    }
+
+    try {
+      setIsSavingMaster(true);
+      const newAreas = { ...areaNames, [slug]: editableAreaTitle.trim().toUpperCase() };
+      const res = await fetch("/api/apar/master", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          areas: newAreas,
+          updated_by: user?.fullName || "admin"
+        })
+      });
+
+      const json = await res.json();
+      if (!res.ok || !json.success) throw new Error(json.message || "Gagal mengubah nama area");
+
+      setAreaNames(newAreas);
+      setShowAreaNameModal(false);
+      alert("✅ Nama area APAR berhasil diperbarui!");
+    } catch (err: any) {
+      alert(`❌ Gagal menyimpan nama area: ${err.message}`);
+    } finally {
+      setIsSavingMaster(false);
+    }
   };
 
   const handleInputChange = (index: number, field: string, value: string) => {
@@ -311,15 +505,6 @@ export default function InspeksiAparForm({ params }: { params: Promise<{ slug: s
   const handleRemoveImage = (index: number) => {
     handleInputChange(index, "foto", "");
     setTempPhotoPreviews(prev => { const n = { ...prev }; delete n[index]; return n; });
-  };
-
-  const parseExpDate = (dateStr: string | null | undefined): Date | null => {
-    if (!dateStr || typeof dateStr !== 'string') return null;
-    let parsed = parse(dateStr, "dd/MM/yyyy", new Date());
-    if (isValid(parsed)) return parsed;
-    parsed = parse(dateStr, "dd/MM/yy", new Date());
-    if (isValid(parsed)) return parsed;
-    return null;
   };
 
   const isExpired = (expDateString: string | null | undefined): boolean => {
@@ -488,6 +673,19 @@ export default function InspeksiAparForm({ params }: { params: Promise<{ slug: s
             <span className="btn-back-text">Kembali</span>
           </button>
           <h1 className="page-title">🧯 Inspeksi APAR - {areaNames[slug]}</h1>
+          {isAdmin && (
+            <span style={{
+              marginLeft: 'auto',
+              background: 'rgba(255,255,255,0.2)',
+              padding: '4px 12px',
+              borderRadius: '20px',
+              fontSize: '12px',
+              fontWeight: '700',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px'
+            }}>👑 Admin Mode</span>
+          )}
         </div>
 
         <p className="subtitle">
@@ -499,46 +697,103 @@ export default function InspeksiAparForm({ params }: { params: Promise<{ slug: s
           </span>
         </p>
 
-        {/* Load Master Button */}
-        <div className="action-buttons" style={{ marginBottom: '16px', display: 'flex', gap: '10px' }}>
-          <button 
-            onClick={loadMasterData} 
-            disabled={loadingMaster || loading || !isScanned}
-            className="btn btn-secondary"
-            style={{
-              padding: '8px 16px',
-              backgroundColor: '#6c757d',
-              color: 'white',
-              border: 'none',
-              borderRadius: '4px',
-              cursor: (loadingMaster || loading || !isScanned) ? 'not-allowed' : 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '8px'
-            }}
-            title={!isScanned ? "Harap scan QR code area terlebih dahulu" : ""}
-          >
-            {loadingMaster ? '⏳ Memuat...' : '📥 Load Master Data'}
-          </button>
-        </div>
+        {/* 👑 Admin Management Toolbar */}
+        {isAdmin && (
+          <div style={{
+            background: "linear-gradient(135deg, #1e3a8a 0%, #1e40af 100%)",
+            borderRadius: "12px",
+            padding: "14px 20px",
+            marginBottom: "20px",
+            color: "white"
+          }}>
+            <div style={{ fontWeight: "700", fontSize: "14px", marginBottom: "10px" }}>👑 Kelola Master APAR (Admin)</div>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: "10px" }}>
+              <button
+                type="button"
+                onClick={openUnitManager}
+                style={{
+                  display: "inline-flex", alignItems: "center", gap: "6px",
+                  padding: "8px 16px", background: "#16a34a", color: "white",
+                  border: "none", borderRadius: "8px", fontSize: "13px",
+                  fontWeight: "600", cursor: "pointer"
+                }}
+              >
+                <Settings size={14} /> Kelola Unit APAR
+              </button>
+              <button
+                type="button"
+                onClick={openCriteriaManager}
+                style={{
+                  display: "inline-flex", alignItems: "center", gap: "6px",
+                  padding: "8px 16px", background: "#7c3aed", color: "white",
+                  border: "none", borderRadius: "8px", fontSize: "13px",
+                  fontWeight: "600", cursor: "pointer"
+                }}
+              >
+                <ListChecks size={14} /> Kelola Point Kriteria
+              </button>
+              <button
+                type="button"
+                onClick={openAreaNameManager}
+                style={{
+                  display: "inline-flex", alignItems: "center", gap: "6px",
+                  padding: "8px 16px", background: "#d97706", color: "white",
+                  border: "none", borderRadius: "8px", fontSize: "13px",
+                  fontWeight: "600", cursor: "pointer"
+                }}
+              >
+                <Edit2 size={14} /> Ubah Nama Area
+              </button>
+              <button
+                onClick={loadMasterData}
+                disabled={loadingMaster || loading}
+                style={{
+                  display: "inline-flex", alignItems: "center", gap: "6px",
+                  padding: "8px 16px", background: "#0891b2", color: "white",
+                  border: "none", borderRadius: "8px", fontSize: "13px",
+                  fontWeight: "600", cursor: loadingMaster ? "not-allowed" : "pointer"
+                }}
+              >
+                {loadingMaster ? '⏳ Memuat...' : '📥 Load Master Data'}
+              </button>
+            </div>
+          </div>
+        )}
 
-       {/* ✅ SCAN WARNING BANNER - PERBAIKAN */}
-{!isScanned && (
-  <div className="banner banner-warning scan-warning">
-    <span>🔒 Akses melalui scan QR code terlebih dahulu untuk mengisi checksheet ini.</span>
-    <button
-      onClick={() => {
-        console.log("Scan button clicked"); // Debug log
-        router.push("/scan");
-      }}
-      className="banner-btn"
-      disabled={loading}
-      type="button" // Tambahkan type="button"
-    >
-      <QrCode size={14} /> Scan Sekarang
-    </button>
-  </div>
-)}
+        {/* Load Master Button (Inspector mode) */}
+        {!isAdmin && (
+          <div className="action-buttons" style={{ marginBottom: '16px', display: 'flex', gap: '10px' }}>
+            <button
+              onClick={loadMasterData}
+              disabled={loadingMaster || loading || !isScanned}
+              className="btn btn-secondary"
+              style={{
+                padding: '8px 16px', backgroundColor: '#6c757d', color: 'white',
+                border: 'none', borderRadius: '4px',
+                cursor: (loadingMaster || loading || !isScanned) ? 'not-allowed' : 'pointer',
+                display: 'flex', alignItems: 'center', gap: '8px'
+              }}
+              title={!isScanned ? "Harap scan QR code area terlebih dahulu" : ""}
+            >
+              {loadingMaster ? '⏳ Memuat...' : '📥 Load Master Data'}
+            </button>
+          </div>
+        )}
+
+        {/* Scan warning - hanya tampil jika bukan admin dan belum scan */}
+        {!isScanned && !isAdmin && (
+          <div className="banner banner-warning scan-warning">
+            <span>🔒 Akses melalui scan QR code terlebih dahulu untuk mengisi checksheet ini.</span>
+            <button
+              onClick={() => router.push("/scan")}
+              className="banner-btn"
+              disabled={loading}
+              type="button"
+            >
+              <QrCode size={14} /> Scan Sekarang
+            </button>
+          </div>
+        )}
 
         {loading && (
           <div className="loading-overlay">
@@ -664,8 +919,8 @@ export default function InspeksiAparForm({ params }: { params: Promise<{ slug: s
                             type="button"
                             onClick={() => handleDeleteItem(index)}
                             className="delete-btn"
-                            disabled={loading || !isScanned}
-                            title={!isScanned ? "Harap scan QR code terlebih dahulu" : "Hapus item ini"}
+                            disabled={loading || (!isScanned && !isAdmin)}
+                            title={(!isScanned && !isAdmin) ? "Harap scan QR code terlebih dahulu" : "Hapus item ini"}
                           >
                             ✕
                           </button>
@@ -679,9 +934,8 @@ export default function InspeksiAparForm({ params }: { params: Promise<{ slug: s
                             value={item.jenisApar}
                             onChange={(e) => handleInputChange(index, "jenisApar", e.target.value)}
                             className="notes-input"
-                            disabled={loading || !isScanned}
+                            disabled={loading || (!isScanned && !isAdmin)}
                             placeholder="Jenis APAR..."
-                            title={!isScanned ? "Harap scan QR code terlebih dahulu" : ""}
                           />
                         </td>
                         
@@ -692,9 +946,8 @@ export default function InspeksiAparForm({ params }: { params: Promise<{ slug: s
                             value={item.lokasi}
                             onChange={(e) => handleInputChange(index, "lokasi", e.target.value)}
                             className="notes-input"
-                            disabled={loading || !isScanned}
+                            disabled={loading || (!isScanned && !isAdmin)}
                             placeholder="Lokasi..."
-                            title={!isScanned ? "Harap scan QR code terlebih dahulu" : ""}
                           />
                         </td>
                         
@@ -705,9 +958,8 @@ export default function InspeksiAparForm({ params }: { params: Promise<{ slug: s
                             value={item.noApar}
                             onChange={(e) => handleInputChange(index, "noApar", e.target.value)}
                             className="notes-input"
-                            disabled={loading || !isScanned}
+                            disabled={loading || (!isScanned && !isAdmin)}
                             placeholder="No. APAR..."
-                            title={!isScanned ? "Harap scan QR code terlebih dahulu" : ""}
                           />
                         </td>
                         
@@ -718,8 +970,8 @@ export default function InspeksiAparForm({ params }: { params: Promise<{ slug: s
                             value={item.expDateInput || ''}
                             onChange={(e) => handleInputChange(index, "expDateInput", e.target.value)}
                             className={`status-select ${isExpired(item.expDate) ? 'status-expired' : ''}`}
-                            disabled={loading || !isScanned}
-                            title={!isScanned ? "Harap scan QR code terlebih dahulu" : "Klik untuk mengubah tanggal kedaluwarsa"}
+                            disabled={loading || (!isScanned && !isAdmin)}
+                            title={"Klik untuk mengubah tanggal kedaluwarsa"}
                           />
                         </td>
                         
@@ -730,9 +982,8 @@ export default function InspeksiAparForm({ params }: { params: Promise<{ slug: s
                             value={item.hydrotestDateInput || ''}
                             onChange={(e) => handleInputChange(index, "hydrotestDateInput", e.target.value)}
                             className={`notes-input ${isHydrotestExpired(item.hydrotestDate) ? 'status-expired' : ''}`}
-                            disabled={loading || !isScanned}
+                            disabled={loading || (!isScanned && !isAdmin)}
                             placeholder="Pilih tanggal"
-                            title={!isScanned ? "Harap scan QR code terlebih dahulu" : (isHydrotestExpired(item.hydrotestDate) ? '⚠️ Hydrotest sudah expired' : 'Pilih tanggal hydrotest')}
                           />
                         </td>
                         
@@ -743,8 +994,7 @@ export default function InspeksiAparForm({ params }: { params: Promise<{ slug: s
                               value={item[`check${idx + 1}`]}
                               onChange={(e) => handleInputChange(index, `check${idx + 1}`, e.target.value)}
                               className="status-select"
-                              disabled={loading || !isScanned}
-                              title={!isScanned ? "Harap scan QR code terlebih dahulu" : ""}
+                              disabled={loading || (!isScanned && !isAdmin)}
                             >
                               <option value="OK">OK</option>
                               <option value="NG">NG</option>
@@ -761,8 +1011,7 @@ export default function InspeksiAparForm({ params }: { params: Promise<{ slug: s
                             onChange={(e) => handleInputChange(index, "keterangan", e.target.value)}
                             placeholder="Wajib jika NG"
                             className="notes-input"
-                            disabled={loading || !isScanned}
-                            title={!isScanned ? "Harap scan QR code terlebih dahulu" : ""}
+                            disabled={loading || (!isScanned && !isAdmin)}
                           />
                         </td>
                         <td>
@@ -772,8 +1021,7 @@ export default function InspeksiAparForm({ params }: { params: Promise<{ slug: s
                             onChange={(e) => handleInputChange(index, "tindakanPerbaikan", e.target.value)}
                             placeholder="Tindakan..."
                             className="notes-input"
-                            disabled={loading || !isScanned}
-                            title={!isScanned ? "Harap scan QR code terlebih dahulu" : ""}
+                            disabled={loading || (!isScanned && !isAdmin)}
                           />
                         </td>
                         <td><div className="info-cell">{item.pic}</div></td>
@@ -791,27 +1039,25 @@ export default function InspeksiAparForm({ params }: { params: Promise<{ slug: s
                                   alt="Preview"
                                   className="uploaded-image"
                                 />
-                                <button 
-                                  type="button" 
-                                  onClick={() => handleRemoveImage(index)} 
-                                  className="remove-btn" 
-                                  disabled={loading || !isScanned}
-                                  title={!isScanned ? "Harap scan QR code terlebih dahulu" : ""}
+                                <button
+                                  type="button"
+                                  onClick={() => handleRemoveImage(index)}
+                                  className="remove-btn"
+                                  disabled={loading || (!isScanned && !isAdmin)}
                                 >
                                   ✕
                                 </button>
                                 {loading && <div className="upload-loading"><div className="spinner-small"></div></div>}
                               </div>
                             ) : (
-                              <label className={`file-label ${!isScanned ? 'disabled' : ''}`}
-                                title={!isScanned ? "Harap scan QR code terlebih dahulu" : ""}>
+                              <label className={`file-label ${(!isScanned && !isAdmin) ? 'disabled' : ''}`}>
                                 📷 Unggah
-                                <input 
-                                  type="file" 
-                                  accept="image/*" 
-                                  onChange={(e) => handleImageUpload(e, index)} 
-                                  className="file-input" 
-                                  disabled={loading || !isScanned} 
+                                <input
+                                  type="file"
+                                  accept="image/*"
+                                  onChange={(e) => handleImageUpload(e, index)}
+                                  className="file-input"
+                                  disabled={loading || (!isScanned && !isAdmin)}
                                 />
                               </label>
                             )}
@@ -847,9 +1093,8 @@ export default function InspeksiAparForm({ params }: { params: Promise<{ slug: s
                           value={item.jenisApar}
                           onChange={(e) => handleInputChange(index, "jenisApar", e.target.value)}
                           className="notes-input"
-                          disabled={loading || !isScanned}
+                          disabled={loading || (!isScanned && !isAdmin)}
                           placeholder="Jenis APAR..."
-                          title={!isScanned ? "Harap scan QR code terlebih dahulu" : ""}
                         />
                       </div>
                       
@@ -861,9 +1106,8 @@ export default function InspeksiAparForm({ params }: { params: Promise<{ slug: s
                           value={item.lokasi}
                           onChange={(e) => handleInputChange(index, "lokasi", e.target.value)}
                           className="notes-input"
-                          disabled={loading || !isScanned}
+                          disabled={loading || (!isScanned && !isAdmin)}
                           placeholder="Lokasi..."
-                          title={!isScanned ? "Harap scan QR code terlebih dahulu" : ""}
                         />
                       </div>
                       
@@ -875,9 +1119,8 @@ export default function InspeksiAparForm({ params }: { params: Promise<{ slug: s
                           value={item.noApar}
                           onChange={(e) => handleInputChange(index, "noApar", e.target.value)}
                           className="notes-input"
-                          disabled={loading || !isScanned}
+                          disabled={loading || (!isScanned && !isAdmin)}
                           placeholder="No. APAR..."
-                          title={!isScanned ? "Harap scan QR code terlebih dahulu" : ""}
                         />
                       </div>
                       
@@ -889,8 +1132,7 @@ export default function InspeksiAparForm({ params }: { params: Promise<{ slug: s
                           value={item.expDateInput || ''}
                           onChange={(e) => handleInputChange(index, "expDateInput", e.target.value)}
                           className={`notes-input ${isExpired(item.expDate) ? 'status-expired' : ''}`}
-                          disabled={loading || !isScanned}
-                          title={!isScanned ? "Harap scan QR code terlebih dahulu" : ""}
+                          disabled={loading || (!isScanned && !isAdmin)}
                         />
                         {isExpired(item.expDate) && <span className="text-warning text-sm">⚠️ Expired</span>}
                       </div>
@@ -903,8 +1145,7 @@ export default function InspeksiAparForm({ params }: { params: Promise<{ slug: s
                           value={item.hydrotestDateInput || ''}
                           onChange={(e) => handleInputChange(index, "hydrotestDateInput", e.target.value)}
                           className={`notes-input ${isHydrotestExpired(item.hydrotestDate) ? 'status-expired' : ''}`}
-                          disabled={loading || !isScanned}
-                          title={!isScanned ? "Harap scan QR code terlebih dahulu" : ""}
+                          disabled={loading || (!isScanned && !isAdmin)}
                         />
                         {isHydrotestExpired(item.hydrotestDate) && <span className="text-warning text-sm">⚠️ Hydrotest Expired</span>}
                       </div>
@@ -919,8 +1160,7 @@ export default function InspeksiAparForm({ params }: { params: Promise<{ slug: s
                               value={item[`check${idx + 1}`]}
                               onChange={(e) => handleInputChange(index, `check${idx + 1}`, e.target.value)}
                               className="check-select"
-                              disabled={loading || !isScanned}
-                              title={!isScanned ? "Harap scan QR code terlebih dahulu" : ""}
+                              disabled={loading || (!isScanned && !isAdmin)}
                             >
                               <option value="OK">OK</option>
                               <option value="NG">NG</option>
@@ -939,8 +1179,7 @@ export default function InspeksiAparForm({ params }: { params: Promise<{ slug: s
                           onChange={(e) => handleInputChange(index, "keterangan", e.target.value)}
                           placeholder="Wajib diisi jika NG"
                           className="notes-input"
-                          disabled={loading || !isScanned}
-                          title={!isScanned ? "Harap scan QR code terlebih dahulu" : ""}
+                          disabled={loading || (!isScanned && !isAdmin)}
                         />
                       </div>
                       <div className="form-group">
@@ -951,8 +1190,7 @@ export default function InspeksiAparForm({ params }: { params: Promise<{ slug: s
                           onChange={(e) => handleInputChange(index, "tindakanPerbaikan", e.target.value)}
                           placeholder="Tindakan perbaikan..."
                           className="notes-input"
-                          disabled={loading || !isScanned}
-                          title={!isScanned ? "Harap scan QR code terlebih dahulu" : ""}
+                          disabled={loading || (!isScanned && !isAdmin)}
                         />
                       </div>
                       <div className="form-group">
@@ -974,27 +1212,25 @@ export default function InspeksiAparForm({ params }: { params: Promise<{ slug: s
                                 alt="Preview"
                                 className="uploaded-image"
                               />
-                              <button 
-                                type="button" 
-                                onClick={() => handleRemoveImage(index)} 
-                                className="remove-btn" 
-                                disabled={loading || !isScanned}
-                                title={!isScanned ? "Harap scan QR code terlebih dahulu" : ""}
+                              <button
+                                type="button"
+                                onClick={() => handleRemoveImage(index)}
+                                className="remove-btn"
+                                disabled={loading || (!isScanned && !isAdmin)}
                               >
                                 ✕
                               </button>
                               {loading && <div className="upload-loading"><div className="spinner-small"></div></div>}
                             </div>
                           ) : (
-                            <label className={`file-label file-label-large ${!isScanned ? 'disabled' : ''}`}
-                              title={!isScanned ? "Harap scan QR code terlebih dahulu" : ""}>
+                            <label className={`file-label file-label-large ${(!isScanned && !isAdmin) ? 'disabled' : ''}`}>
                               📷 Unggah Foto
-                              <input 
-                                type="file" 
-                                accept="image/*" 
-                                onChange={(e) => handleImageUpload(e, index)} 
-                                className="file-input" 
-                                disabled={loading || !isScanned} 
+                              <input
+                                type="file"
+                                accept="image/*"
+                                onChange={(e) => handleImageUpload(e, index)}
+                                className="file-input"
+                                disabled={loading || (!isScanned && !isAdmin)}
                               />
                             </label>
                           )}
@@ -1007,26 +1243,24 @@ export default function InspeksiAparForm({ params }: { params: Promise<{ slug: s
             </div>
 
             <div className="form-actions">
-              <button 
-                onClick={handleAddItem} 
-                className="btn-add-item" 
-                disabled={loading || !isScanned}
-                title={!isScanned ? "Harap scan QR code terlebih dahulu" : ""}
+              <button
+                onClick={handleAddItem}
+                className="btn-add-item"
+                disabled={loading || (!isScanned && !isAdmin)}
               >
                 ➕ Tambah Item
               </button>
-              <button 
-                onClick={() => router.push("/status-ga/inspeksi-apar")} 
-                className="btn-cancel" 
+              <button
+                onClick={() => router.push("/status-ga/inspeksi-apar")}
+                className="btn-cancel"
                 disabled={loading}
               >
                 Batal
               </button>
-              <button 
-                onClick={handleShowPreview} 
-                className="btn-submit" 
-                disabled={loading || !isScanned}
-                title={!isScanned ? "Harap scan QR code terlebih dahulu" : ""}
+              <button
+                onClick={handleShowPreview}
+                className="btn-submit"
+                disabled={loading || (!isScanned && !isAdmin)}
               >
                 👁️ Preview & Simpan
               </button>
@@ -1127,6 +1361,208 @@ export default function InspeksiAparForm({ params }: { params: Promise<{ slug: s
           </div>
         )}
       </div>
+
+      {/* ─── MODAL: Kelola Unit APAR ─────────────────────────────── */}
+      {showUnitManagerModal && (
+        <div style={{
+          position: "fixed", top: 0, left: 0, right: 0, bottom: 0,
+          background: "rgba(15,23,42,0.65)", display: "flex",
+          justifyContent: "center", alignItems: "center", zIndex: 4000,
+          padding: "16px", backdropFilter: "blur(4px)"
+        }}>
+          <div style={{
+            background: "white", borderRadius: "16px", width: "100%",
+            maxWidth: "900px", maxHeight: "90vh", overflow: "hidden",
+            boxShadow: "0 25px 50px rgba(0,0,0,0.3)", display: "flex", flexDirection: "column"
+          }}>
+            <div style={{
+              background: "linear-gradient(135deg, #16a34a 0%, #15803d 100%)",
+              padding: "16px 20px", display: "flex", justifyContent: "space-between", alignItems: "center"
+            }}>
+              <div>
+                <div style={{ color: "white", fontWeight: "700", fontSize: "16px" }}>⚙️ Kelola Master Unit APAR</div>
+                <div style={{ color: "#bbf7d0", fontSize: "12px" }}>Area: {areaNames[slug]} | {editableUnits.length} unit</div>
+              </div>
+              <button onClick={() => setShowUnitManagerModal(false)} style={{
+                background: "rgba(255,255,255,0.2)", border: "none", color: "white",
+                borderRadius: "6px", padding: "6px 12px", cursor: "pointer", fontWeight: "700"
+              }}>✕</button>
+            </div>
+            <div style={{ overflowY: "auto", flex: 1, padding: "16px" }}>
+              <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "13px" }}>
+                <thead>
+                  <tr style={{ background: "#f0fdf4" }}>
+                    {["No", "Jenis APAR", "Lokasi", "No. APAR", "Exp Date", "Hydrotest Date", "Hapus"].map(h => (
+                      <th key={h} style={{ padding: "8px 10px", border: "1px solid #d1fae5", textAlign: "left", fontWeight: "700" }}>{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {editableUnits.map((unit, idx) => (
+                    <tr key={idx}>
+                      <td style={{ padding: "6px 10px", border: "1px solid #e2e8f0", textAlign: "center", color: "#64748b" }}>{idx + 1}</td>
+                      {(["jenisApar", "lokasi", "noApar", "expDate", "hydrotestDate"] as const).map(field => (
+                        <td key={field} style={{ padding: "4px 6px", border: "1px solid #e2e8f0" }}>
+                          <input
+                            type="text"
+                            value={(unit[field] as string) || ""}
+                            onChange={e => handleUnitChange(idx, field, e.target.value)}
+                            style={{ width: "100%", padding: "6px 8px", border: "1px solid #cbd5e1", borderRadius: "4px", fontSize: "13px" }}
+                          />
+                        </td>
+                      ))}
+                      <td style={{ padding: "4px 6px", border: "1px solid #e2e8f0", textAlign: "center" }}>
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveUnitRow(idx)}
+                          style={{
+                            background: "#ef4444", color: "white", border: "none",
+                            borderRadius: "4px", padding: "4px 10px", cursor: "pointer", fontSize: "13px"
+                          }}
+                        >🗑️</button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <div style={{ padding: "14px 20px", background: "#f1f5f9", borderTop: "1px solid #e2e8f0", display: "flex", justifyContent: "space-between", alignItems: "center", gap: "10px", flexWrap: "wrap" }}>
+              <button
+                type="button"
+                onClick={handleAddUnitRow}
+                style={{
+                  display: "inline-flex", alignItems: "center", gap: "6px",
+                  padding: "8px 16px", background: "#16a34a", color: "white",
+                  border: "none", borderRadius: "6px", cursor: "pointer", fontWeight: "600", fontSize: "13px"
+                }}
+              ><Plus size={14} /> Tambah Unit APAR</button>
+              <div style={{ display: "flex", gap: "10px" }}>
+                <button onClick={() => setShowUnitManagerModal(false)} style={{ padding: "8px 16px", background: "#94a3b8", color: "white", border: "none", borderRadius: "6px", cursor: "pointer", fontWeight: "600", fontSize: "13px" }}>Batal</button>
+                <button
+                  onClick={handleSaveMasterUnits}
+                  disabled={isSavingMaster}
+                  style={{ padding: "8px 18px", background: isSavingMaster ? "#93c5fd" : "#2563eb", color: "white", border: "none", borderRadius: "6px", cursor: isSavingMaster ? "not-allowed" : "pointer", fontWeight: "600", fontSize: "13px" }}
+                >{isSavingMaster ? "Menyimpan..." : "💾 Simpan Master Unit"}</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ─── MODAL: Kelola Point Kriteria Pemeriksaan ────────────── */}
+      {showCriteriaModal && (
+        <div style={{
+          position: "fixed", top: 0, left: 0, right: 0, bottom: 0,
+          background: "rgba(15,23,42,0.65)", display: "flex",
+          justifyContent: "center", alignItems: "center", zIndex: 4000,
+          padding: "16px", backdropFilter: "blur(4px)"
+        }}>
+          <div style={{
+            background: "white", borderRadius: "16px", width: "100%",
+            maxWidth: "700px", maxHeight: "85vh", overflow: "hidden",
+            boxShadow: "0 25px 50px rgba(0,0,0,0.3)", display: "flex", flexDirection: "column"
+          }}>
+            <div style={{
+              background: "linear-gradient(135deg, #7c3aed 0%, #5b21b6 100%)",
+              padding: "16px 20px", display: "flex", justifyContent: "space-between", alignItems: "center"
+            }}>
+              <div>
+                <div style={{ color: "white", fontWeight: "700", fontSize: "16px" }}>📋 Kelola Point Kriteria Pemeriksaan</div>
+                <div style={{ color: "#e9d5ff", fontSize: "12px" }}>{editableCriteria.length} point pemeriksaan aktif</div>
+              </div>
+              <button onClick={() => setShowCriteriaModal(false)} style={{
+                background: "rgba(255,255,255,0.2)", border: "none", color: "white",
+                borderRadius: "6px", padding: "6px 12px", cursor: "pointer", fontWeight: "700"
+              }}>✕</button>
+            </div>
+            <div style={{ overflowY: "auto", flex: 1, padding: "16px" }}>
+              {editableCriteria.map((c, idx) => (
+                <div key={idx} style={{ display: "grid", gridTemplateColumns: "2fr 1fr 2fr auto", gap: "8px", alignItems: "center", marginBottom: "10px", padding: "10px", background: "#faf5ff", borderRadius: "8px", border: "1px solid #e9d5ff" }}>
+                  <input
+                    value={c.label}
+                    onChange={e => setEditableCriteria(prev => prev.map((x, i) => i === idx ? { ...x, label: e.target.value } : x))}
+                    placeholder="Label pemeriksaan"
+                    style={{ padding: "6px 10px", border: "1px solid #cbd5e1", borderRadius: "6px", fontSize: "13px" }}
+                  />
+                  <input
+                    value={c.short}
+                    onChange={e => setEditableCriteria(prev => prev.map((x, i) => i === idx ? { ...x, short: e.target.value } : x))}
+                    placeholder="Singkatan"
+                    style={{ padding: "6px 10px", border: "1px solid #cbd5e1", borderRadius: "6px", fontSize: "13px" }}
+                  />
+                  <input
+                    value={c.help}
+                    onChange={e => setEditableCriteria(prev => prev.map((x, i) => i === idx ? { ...x, help: e.target.value } : x))}
+                    placeholder="Deskripsi / petunjuk"
+                    style={{ padding: "6px 10px", border: "1px solid #cbd5e1", borderRadius: "6px", fontSize: "13px" }}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => handleRemoveCriteriaRow(idx)}
+                    style={{ background: "#ef4444", color: "white", border: "none", borderRadius: "4px", padding: "6px 10px", cursor: "pointer" }}
+                  ><Trash2 size={13} /></button>
+                </div>
+              ))}
+            </div>
+            <div style={{ padding: "14px 20px", background: "#f1f5f9", borderTop: "1px solid #e2e8f0", display: "flex", justifyContent: "space-between", alignItems: "center", gap: "10px" }}>
+              <button
+                type="button"
+                onClick={handleAddCriteriaRow}
+                style={{ display: "inline-flex", alignItems: "center", gap: "6px", padding: "8px 14px", background: "#7c3aed", color: "white", border: "none", borderRadius: "6px", cursor: "pointer", fontWeight: "600", fontSize: "13px" }}
+              ><Plus size={14} /> Tambah Point</button>
+              <div style={{ display: "flex", gap: "10px" }}>
+                <button onClick={() => setShowCriteriaModal(false)} style={{ padding: "8px 14px", background: "#94a3b8", color: "white", border: "none", borderRadius: "6px", cursor: "pointer", fontWeight: "600", fontSize: "13px" }}>Batal</button>
+                <button
+                  onClick={handleSaveMasterCriteria}
+                  disabled={isSavingMaster}
+                  style={{ padding: "8px 16px", background: isSavingMaster ? "#93c5fd" : "#7c3aed", color: "white", border: "none", borderRadius: "6px", cursor: isSavingMaster ? "not-allowed" : "pointer", fontWeight: "600", fontSize: "13px" }}
+                >{isSavingMaster ? "Menyimpan..." : "💾 Simpan Kriteria"}</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ─── MODAL: Ubah Nama Area ───────────────────────────────── */}
+      {showAreaNameModal && (
+        <div style={{
+          position: "fixed", top: 0, left: 0, right: 0, bottom: 0,
+          background: "rgba(15,23,42,0.65)", display: "flex",
+          justifyContent: "center", alignItems: "center", zIndex: 4000,
+          padding: "16px", backdropFilter: "blur(4px)"
+        }}>
+          <div style={{
+            background: "white", borderRadius: "16px", width: "100%",
+            maxWidth: "480px", overflow: "hidden",
+            boxShadow: "0 25px 50px rgba(0,0,0,0.3)"
+          }}>
+            <div style={{ background: "linear-gradient(135deg, #d97706 0%, #b45309 100%)", padding: "16px 20px" }}>
+              <div style={{ color: "white", fontWeight: "700", fontSize: "16px" }}>✏️ Ubah Nama Area APAR</div>
+              <div style={{ color: "#fde68a", fontSize: "12px" }}>Slug: {slug}</div>
+            </div>
+            <div style={{ padding: "20px" }}>
+              <label style={{ display: "block", fontWeight: "600", marginBottom: "8px", color: "#374151", fontSize: "14px" }}>Nama Area (tampil di halaman list &amp; form)</label>
+              <input
+                type="text"
+                value={editableAreaTitle}
+                onChange={e => setEditableAreaTitle(e.target.value.toUpperCase())}
+                placeholder="Contoh: AREA GENBA A"
+                style={{ width: "100%", padding: "10px 14px", border: "2px solid #d97706", borderRadius: "8px", fontSize: "14px", fontWeight: "600", boxSizing: "border-box" }}
+              />
+            </div>
+            <div style={{ padding: "14px 20px", background: "#f1f5f9", borderTop: "1px solid #e2e8f0", display: "flex", justifyContent: "flex-end", gap: "10px" }}>
+              <button onClick={() => setShowAreaNameModal(false)} style={{ padding: "8px 16px", background: "#94a3b8", color: "white", border: "none", borderRadius: "6px", cursor: "pointer", fontWeight: "600", fontSize: "13px" }}>Batal</button>
+              <button
+                onClick={handleSaveMasterAreaName}
+                disabled={isSavingMaster}
+                style={{ padding: "8px 18px", background: isSavingMaster ? "#fcd34d" : "#d97706", color: "white", border: "none", borderRadius: "6px", cursor: isSavingMaster ? "not-allowed" : "pointer", fontWeight: "600", fontSize: "13px" }}
+              >{isSavingMaster ? "Menyimpan..." : "💾 Simpan Nama Area"}</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+
 
       <style jsx global>{`
         body {

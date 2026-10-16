@@ -52,6 +52,9 @@ export const FORM_TYPES = [
   { value: 'Selang Hydrant',           label: '🌊 Selang Hydrant',          slug: 'selang-hydrant',   group: 'ga'     },
   { value: 'Panel Listrik',            label: '🔌 Panel Listrik',           slug: 'panel',            group: 'ga'     },
   { value: 'Smoke Detector',           label: '💨 Smoke Detector',          slug: 'smoke-detector',   group: 'ga'     },
+  { value: 'Stop Kontak',              label: '🔌 Stop Kontak',             slug: 'stop-kontak',      group: 'ga'     },
+  { value: 'Instalasi Listrik',        label: '⚡ Instalasi Listrik',       slug: 'instalasi-listrik',group: 'ga'     },
+  { value: 'Power House',              label: '🏭 Power House',             slug: 'power-house',      group: 'ga'     },
 ] as const;
 
 export type FormTypeValue = typeof FORM_TYPES[number]['value'];
@@ -154,6 +157,18 @@ const FORM_CONFIGS: Record<string, FormConfig> = {
   },
   'Smoke Detector': {
     type: 'Smoke Detector', label: '💨 Smoke Detector', slug: 'smoke-detector', group: 'ga',
+    analyticsEndpoint: ANALYTICS, historyEndpoint: HISTORY,
+  },
+  'Stop Kontak': {
+    type: 'Stop Kontak', label: '🔌 Stop Kontak', slug: 'stop-kontak', group: 'ga',
+    analyticsEndpoint: ANALYTICS, historyEndpoint: HISTORY,
+  },
+  'Instalasi Listrik': {
+    type: 'Instalasi Listrik', label: '⚡ Instalasi Listrik', slug: 'instalasi-listrik', group: 'ga',
+    analyticsEndpoint: ANALYTICS, historyEndpoint: HISTORY,
+  },
+  'Power House': {
+    type: 'Power House', label: '🏭 Power House', slug: 'power-house', group: 'ga',
     analyticsEndpoint: ANALYTICS, historyEndpoint: HISTORY,
   },
 };

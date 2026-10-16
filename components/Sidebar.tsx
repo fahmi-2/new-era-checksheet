@@ -19,14 +19,22 @@ interface NgReport {
 interface SidebarProps {
   userName?: string;
   userRole?: string;
+  isOpen?: boolean;
+  onToggle?: () => void;
 }
 
 // ── Konstanta lebar sidebar (harus konsisten dengan page yang menggunakannya) ──
 const SIDEBAR_COLLAPSED_W = 70;
 const SIDEBAR_EXPANDED_W = 240;
 
-export function Sidebar({ userName = "User", userRole = "Role" }: SidebarProps) {
-  const [isExpanded, setIsExpanded] = useState(false);
+export function Sidebar({ userName = "User", userRole = "Role", isOpen, onToggle }: SidebarProps) {
+  const [isExpanded, setIsExpanded] = useState(isOpen ?? false);
+
+  useEffect(() => {
+    if (isOpen !== undefined) {
+      setIsExpanded(isOpen);
+    }
+  }, [isOpen]);
   const [activeMenu, setActiveMenu] = useState("/home");
   const [ngReports, setNgReports] = useState<NgReport[]>([]);
   const [isNotificationOpen, setIsNotificationOpen] = useState(false);
@@ -55,8 +63,8 @@ export function Sidebar({ userName = "User", userRole = "Role" }: SidebarProps) 
   // sehingga tidak memicu error "setState in render" di komponen lain (QRGeneratorPage).
   const broadcastSidebarWidth = (expanded: boolean) => {
     const width = expanded ? SIDEBAR_EXPANDED_W : SIDEBAR_COLLAPSED_W;
-    // Set CSS variable langsung (tidak memicu re-render, aman)
-    document.documentElement.style.setProperty("--sidebar-w", String(width));
+    // Set CSS variable langsung dengan unit px
+    document.documentElement.style.setProperty("--sidebar-w", `${width}px`);
     // Dispatch CustomEvent ditunda 1 tick agar render cycle saat ini selesai dulu
     setTimeout(() => {
       window.dispatchEvent(
@@ -128,6 +136,7 @@ export function Sidebar({ userName = "User", userRole = "Role" }: SidebarProps) 
 
   // ✅ toggleSidebar: update state + broadcast ke halaman lain
   const toggleSidebar = () => {
+    if (onToggle) onToggle();
     setIsExpanded(prev => {
       const next = !prev;
       broadcastSidebarWidth(next);

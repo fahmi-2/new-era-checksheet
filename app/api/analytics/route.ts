@@ -247,10 +247,18 @@ export async function GET(request: NextRequest) {
     }
 
     // ────────────────────────────────────────────────────────
-    // 6. ELECTRICAL INSTALLATION
+    // 6. ELECTRICAL INSTALLATION / STOP KONTAK / INSTALASI LISTRIK
     // ────────────────────────────────────────────────────────
-    if (key === 'electrical') {
-      console.log('📊 Querying Electrical Installation...');
+    if (key === 'electrical' || key === 'stop-kontak' || key === 'instalasi-listrik') {
+      console.log(`📊 Querying Electrical: ${key}...`);
+
+      let typeFilter = '';
+      const params: any[] = [dateFrom, dateTo];
+      if (key === 'stop-kontak') {
+        typeFilter = `AND r.type = 'stop-kontak'`;
+      } else if (key === 'instalasi-listrik') {
+        typeFilter = `AND r.type = 'instalasi-listrik'`;
+      }
 
       const result = await pool.query(
         `SELECT
@@ -266,10 +274,10 @@ export async function GET(request: NextRequest) {
               WHERE d.inspection_id = r.id AND d.hasil = 'NOK'
             ) THEN r.id END)                                               AS ng_count
         FROM electrical_inspections r
-        WHERE r.tanggal BETWEEN $1 AND $2
+        WHERE r.tanggal BETWEEN $1 AND $2 ${typeFilter}
         GROUP BY r.tanggal
         ORDER BY r.tanggal ASC`,
-        [dateFrom, dateTo]
+        params
       );
 
       return NextResponse.json({ success: true, data: formatRows(result.rows) });
