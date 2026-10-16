@@ -261,6 +261,31 @@ export default function GADashboard() {
   const topUsers    = useMemo(() => dashboardData?.topUsers    || [], [dashboardData]);
   const historyData = useMemo(() => dashboardData?.historyData || [], [dashboardData]);
 
+  // Rekapitulasi unit/area sudah vs belum diinspeksi
+  const areaInspectionStats = useMemo(() => {
+    const inspectedAreas = new Set<string>();
+    (dashboardData?.historyData || []).forEach(item => {
+      const name = item.area || item.category;
+      if (name && name !== 'Unknown') inspectedAreas.add(String(name).trim());
+    });
+    (dashboardData?.distributionData || []).forEach(item => {
+      if (item.category && item.category !== 'Unknown') {
+        inspectedAreas.add(String(item.category).trim());
+      }
+    });
+
+    const alreadyInspected = inspectedAreas.size;
+    // Estimasi total unit/area dari data historis atau minimal yang terdata
+    const totalUnits = Math.max(alreadyInspected, dashboardData?.distributionData?.length ? new Set(dashboardData.distributionData.map(d => d.category)).size : 0);
+    const notInspected = Math.max(0, totalUnits - alreadyInspected);
+
+    return {
+      alreadyInspected,
+      notInspected,
+      totalUnits,
+    };
+  }, [dashboardData]);
+
   // ── Helpers ────────────────────────────────────────────────
   const formatDateTime = (s: string) => {
     if (!s) return '-';
@@ -944,6 +969,80 @@ export default function GADashboard() {
                   <div className="db-stat-icon">📊</div>
                   <div className="db-stat-val">{stats.completionRate}%</div>
                   <div className="db-stat-lbl">Compliance Rate</div>
+                </div>
+              </div>
+
+              {/* ── Rekapitulasi Unit / Area Inspeksi ── */}
+              <div style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))",
+                gap: "14px",
+                marginBottom: "20px"
+              }}>
+                <div style={{
+                  background: "#ffffff",
+                  border: "1px solid #bbf7d0",
+                  borderRadius: "var(--db-radius)",
+                  padding: "16px 20px",
+                  boxShadow: "var(--db-shadow)",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "14px"
+                }}>
+                  <div style={{
+                    width: "48px",
+                    height: "48px",
+                    borderRadius: "12px",
+                    background: "#f0fdf4",
+                    color: "#16a34a",
+                    display: "grid",
+                    placeItems: "center",
+                    fontSize: "22px"
+                  }}>
+                    🏢
+                  </div>
+                  <div>
+                    <div style={{ fontSize: "12px", color: "#16a34a", fontWeight: "700", textTransform: "uppercase", letterSpacing: "0.03em" }}>
+                      Total Unit / Area Sudah Diinspeksi
+                    </div>
+                    <div style={{ fontSize: "26px", fontWeight: "800", color: "#15803d", lineHeight: 1.2 }}>
+                      {areaInspectionStats.alreadyInspected}
+                      <span style={{ fontSize: "13px", fontWeight: "500", color: "#64748b", marginLeft: "6px" }}>unit/area</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div style={{
+                  background: "#ffffff",
+                  border: "1px solid #fed7aa",
+                  borderRadius: "var(--db-radius)",
+                  padding: "16px 20px",
+                  boxShadow: "var(--db-shadow)",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "14px"
+                }}>
+                  <div style={{
+                    width: "48px",
+                    height: "48px",
+                    borderRadius: "12px",
+                    background: "#fff7ed",
+                    color: "#ea580c",
+                    display: "grid",
+                    placeItems: "center",
+                    fontSize: "22px"
+                  }}>
+                    ⚠️
+                  </div>
+                  <div>
+                    <div style={{ fontSize: "12px", color: "#c2410c", fontWeight: "700", textTransform: "uppercase", letterSpacing: "0.03em" }}>
+                      Total Unit / Area Belum Diinspeksi
+                    </div>
+                    <div style={{ fontSize: "26px", fontWeight: "800", color: "#9a3412", lineHeight: 1.2 }}>
+                      {areaInspectionStats.notInspected}
+                      <span style={{ fontSize: "13px", fontWeight: "500", color: "#64748b", marginLeft: "6px" }}>unit/area</span>
+                    </div>
+                  </div>
                 </div>
               </div>
 

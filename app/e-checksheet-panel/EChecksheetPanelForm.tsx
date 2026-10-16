@@ -487,7 +487,7 @@ export function EChecksheetPanelForm() {
   const [isSaving, setIsSaving] = useState(false);
   const [isLoadingSessions, setIsLoadingSessions] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
-  
+
   // State untuk Detail, Edit, Hapus Riwayat
   const [viewingSession, setViewingSession] = useState<InspectionSession | null>(null);
   const [editingSession, setEditingSession] = useState<InspectionSession | null>(null);
@@ -1709,7 +1709,7 @@ export function EChecksheetPanelForm() {
                               <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 2 }}>
                                 <div style={{ display: "flex", alignItems: "center", gap: 3 }}>
                                   <Sparkles size={11} />
-                                  <span>5S / Bersih</span>
+                                  <span>Kebersihan</span>
                                 </div>
                                 <span style={{ fontSize: 9.5, fontWeight: 500, color: "#166534" }}>Bersih & tertutup</span>
                               </div>
@@ -1800,8 +1800,8 @@ export function EChecksheetPanelForm() {
                                       missingNote
                                         ? { borderColor: "#ef4444", background: "#fef2f2", boxShadow: "0 0 0 2px rgba(239,68,68,.15)" }
                                         : rowNg
-                                        ? { borderColor: "#f97316" }
-                                        : {}
+                                          ? { borderColor: "#f97316" }
+                                          : {}
                                     }
                                     onChange={e => updR(panel.id, { catatan: e.target.value })}
                                   />
@@ -1989,7 +1989,7 @@ export function EChecksheetPanelForm() {
                   background: "#fff", color: "#475569", fontSize: 13, fontWeight: 600,
                   cursor: "pointer", fontFamily: "inherit"
                 }}>
-                  Batal / Edit
+                Batal / Edit
               </button>
               <button onClick={handleSave} disabled={isSaving}
                 style={{
@@ -2394,8 +2394,8 @@ export function EChecksheetPanelForm() {
                                 missingNote
                                   ? { borderColor: "#ef4444", background: "#fef2f2", boxShadow: "0 0 0 2px rgba(239,68,68,.15)" }
                                   : rowNg
-                                  ? { borderColor: "#f97316" }
-                                  : {}
+                                    ? { borderColor: "#f97316" }
+                                    : {}
                               }
                               onChange={e => updEditR(r.panelId, { catatan: e.target.value })}
                             />

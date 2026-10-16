@@ -37,12 +37,12 @@ const ALL_CHECKSHEETS: Record<string, ChecksheetItem> = {
   "lift-barang": { name: "PENGECEKAN LIFT BARANG DAILY", desc: "Cek harian lift barang: limit switch, tombol, kabin", link: "lift-barang", key: "lift-barang", icon: "🛗" },
   "inspeksi-preventif-lift-barang": { name: "INSPEKSI DAN PREVENTIF LIFT BARANG", desc: "Pemeliharaan preventif lift barang", link: "inspeksi-preventif-lift-barang", key: "inspeksi-preventif-lift-barang", icon: "🔧" },
   "tg-listrik": { name: "TANGGA LISTRIK (AWP)", desc: "Cek hidrolik, rem darurat, outrigger, kontrol keselamatan", link: "tg-listrik", key: "tg-listrik", icon: "🪜" },
-  "panel": { name: "PANEL", desc: "Inspeksi panel listrik: suhu, bau, suara, grounding, ELCB", link: "panel", key: "panel", icon: "⚡" },
+  "panel": { name: "PANEL", desc: "Inspeksi panel listrik: suhu, bau, suara, grounding, ELCB", link: "/e-checksheet-panel", key: "panel", icon: "⚡" },
   "form-inspeksi-stop-kontak": { name: "FORM PENGECEKAN STOP KONTAK DAN INSTALASI LISTRIK", desc: "Cek stop kontak dan instalasi listrik di area kerja", link: "form-inspeksi-stop-kontak", key: "form-inspeksi-stop-kontak", icon: "🔌" },
   "power-house": { name: "INSPEKSI POWER HOUSE", desc: "Cek utilitas Power House: Travo, Genset, Booster Pump, Compressor", link: "power-house", key: "power-house", icon: "🏭" },
   "e-checksheet-apd": { name: "Form pengambilan APD", desc: "Formulir distribusi & pengambilan APD", link: "e-checksheet-apd/riwayat-apd", key: "e-checksheet-apd", icon: "🦺" },
   "inf-jalan": { name: "INSPEKSI INFRASTUKTUR JALAN", desc: "Cek kondisi jalan, trotoar, boardess pabrik", link: "inf-jalan", key: "inf-jalan", icon: "🛣️" },
-  "inspeksi-apd": { name: "INSPEKSI APD", desc: "Inspeksi pengecekan penggunaan APD", link: "inspeksi-apd", key: "inspeksi-apd", icon: "🔍" },
+  "inspeksi-apd": { name: "INSPEKSI APD", desc: "Inspeksi pengecekan penggunaan APD", link: "/e-checksheet-ins-apd", key: "inspeksi-apd", icon: "🔍" },
   "checksheet-toilet": { name: "Checksheet Toilet", desc: "Patroli harian kebersihan toilet (standar 5S)", link: "checksheet-toilet", key: "checksheet-toilet", icon: "🚽" },
 }
 
@@ -200,22 +200,27 @@ export default function StatusGA() {
                   <span className="ga-group-count">{cat.items.length}</span>
                 </div>
                 <div className="ga-card-grid">
-                  {cat.items.map((item, itemIdx) => (
-                    <Link
-                      key={`${catIndex}-${itemIdx}-${item.key}`}
-                      href={`/status-ga/${item.link}`}
-                      className="ga-check-card"
-                    >
-                      <div className="ga-card-icon">{item.icon}</div>
-                      <div className="ga-card-copy">
-                        <h3>{item.name}</h3>
-                        <p>{item.desc}</p>
-                      </div>
-                      <svg className="ga-card-arrow" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                        <path d="M5 12h14M12 5l7 7-7 7" />
-                      </svg>
-                    </Link>
-                  ))}
+                  {cat.items.map((item, itemIdx) => {
+                    const isExternal = item.link.startsWith("http://") || item.link.startsWith("https://")
+                    const href = isExternal || item.link.startsWith("/") ? item.link : `/status-ga/${item.link}`
+
+                    return (
+                      <Link
+                        key={`${catIndex}-${itemIdx}-${item.key}`}
+                        href={href}
+                        className="ga-check-card"
+                      >
+                        <div className="ga-card-icon">{item.icon}</div>
+                        <div className="ga-card-copy">
+                          <h3>{item.name}</h3>
+                          <p>{item.desc}</p>
+                        </div>
+                        <svg className="ga-card-arrow" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                          <path d="M5 12h14M12 5l7 7-7 7" />
+                        </svg>
+                      </Link>
+                    )
+                  })}
                 </div>
               </section>
             ))
