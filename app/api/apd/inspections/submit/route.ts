@@ -28,7 +28,6 @@ interface SubmitData {
   sourceAreaName: string;
   inspectorId: string;
   inspectorName: string;
-  scanVerified: boolean;
   rows: RowInput[];
 }
 
@@ -56,14 +55,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (!data.scanVerified) {
-      console.log('❌ Validation failed: belum scan QR');
-      return NextResponse.json(
-        { success: false, message: 'Scan QR Code wajib dilakukan sebelum menyimpan' },
-        { status: 400 }
-      );
-    }
-
+    
+    
     // ── Sanitasi rows ───────────────────────────────────────────────────
     let rows = Array.isArray(data.rows) ? [...data.rows] : [];
 
@@ -186,7 +179,7 @@ export async function POST(request: NextRequest) {
           data.sourceAreaName || null,
           data.inspectorId || null,
           data.inspectorName || null,
-          Boolean(data.scanVerified),
+          
         ]
       );
       console.log('✅ Record inserted:', id);
