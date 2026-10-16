@@ -3,8 +3,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import pool from '@/lib/db';
 
 export async function POST(request: NextRequest) {
-  const client = await pool.connect();
+  let client;
   try {
+    client = await pool.connect();
     const data = await request.json();
 
     const {
@@ -110,17 +111,20 @@ export async function POST(request: NextRequest) {
       { status: 201 }
     );
   } catch (error) {
-    await client.query('ROLLBACK');
+    if (client) {
+      try { await client.query('ROLLBACK'); } catch { /* ignore rollback error */ }
+    }
     console.error('❌ Error submitting powerhouse inspection:', error);
     return NextResponse.json(
       {
         success: false,
-        message: 'Gagal menyimpan data inspeksi powerhouse',
-        error: process.env.NODE_ENV === 'development' ? (error as Error).message : undefined,
+        message: (error as Error)?.message || 'Gagal menyimpan data inspeksi powerhouse',
+        error: (error as Error)?.message,
+        detail: (error as any)?.detail,
       },
       { status: 500 }
     );
   } finally {
-    client.release();
+    if (client) client.release();
   }
 }
