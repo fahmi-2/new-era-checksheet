@@ -587,7 +587,9 @@ const STYLES = `
 .ph-field-in input{padding:8px 44px 8px 12px;border:1.5px solid var(--line);border-radius:10px;font-size:13.5px;font-family:var(--mono);font-weight:700;width:148px;background:#fff;color:var(--ink);transition:border-color .15s}
 .ph-field-in input.plain{padding-right:12px;width:190px;font-family:inherit;font-weight:500}
 .ph-field-in input:focus{outline:none;border-color:var(--info);box-shadow:0 0 0 3px rgba(37,99,235,.15)}
-.ph-field-in input.bad{border-color:#f19a9a;background:#fff;color:#b91c1c}
+.ph-field-in input.bad, input.ph-input.bad{border:2px solid #dc2626 !important;background:#fef2f2 !important;color:#b91c1c !important;font-weight:700}
+.ph-field-in input.bad:focus, input.ph-input.bad:focus{box-shadow:0 0 0 3px rgba(220,38,38,.25) !important}
+.ph-badge-ng{display:inline-flex;align-items:center;gap:3px;font-size:11px;font-weight:800;color:#dc2626;background:#fee2e2;border:1px solid #fca5a5;padding:2px 7px;border-radius:6px;margin-left:6px}
 .ph-unit{position:absolute;right:10px;font-size:11px;font-weight:700;color:var(--mist);pointer-events:none;font-family:var(--mono)}
 .ph-select{position:relative;display:inline-block}
 .ph-select select{appearance:none;padding:8px 32px 8px 12px;border:1.5px solid var(--line);border-radius:10px;background:#fff;font-size:13px;font-weight:600;color:var(--ink);cursor:pointer;min-width:190px;font-family:inherit}
@@ -1159,6 +1161,32 @@ export default function EChecksheetPowerHouseForm() {
         // 3. Update state tabel secara langsung (immutable) agar UI langsung berubah seketika
         setSessions((prev) => prev.map((s) => (s.id === session.id ? updatedSession : s)));
         setEditSession(null);
+
+        // 3b. Sinkronisasikan nilai form input aktif (formValues) & draft agar notifikasi NG di Step 3 langsung hilang otomatis
+        if (session.values && Object.keys(session.values).length > 0) {
+            setFormValues((prev) => {
+                const next = { ...prev };
+                for (const [eqId, eqVals] of Object.entries(session.values)) {
+                    next[eqId] = { ...(next[eqId] ?? {}), ...(eqVals as Record<string, string>) };
+                }
+                return next;
+            });
+            try {
+                const draftRaw = window.localStorage.getItem(draftKey);
+                if (draftRaw) {
+                    const parsedDraft = JSON.parse(draftRaw);
+                    const updatedDraftValues = { ...(parsedDraft.formValues ?? {}) };
+                    for (const [eqId, eqVals] of Object.entries(session.values)) {
+                        updatedDraftValues[eqId] = { ...(updatedDraftValues[eqId] ?? {}), ...(eqVals as Record<string, string>) };
+                    }
+                    window.localStorage.setItem(draftKey, JSON.stringify({
+                        ...parsedDraft,
+                        formValues: updatedDraftValues,
+                        savedAt: new Date().toISOString(),
+                    }));
+                }
+            } catch { /* ignore draft storage error */ }
+        }
 
         try {
             const res = await fetch(`/e-checksheet-ga/api/powerhouse/inspections/${session.id}`, {
@@ -2163,21 +2191,38 @@ export default function EChecksheetPowerHouseForm() {
                                                             } : null)}
                                                         />
                                                     )}
-                                                    {(item.type === "number" || item.type === "text" || item.type === "time") && (
-                                                        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                                                            <input
-                                                                className="ph-input"
-                                                                type={item.type === "number" ? "number" : item.type === "time" ? "time" : "text"}
-                                                                value={equipVals[item.id] ?? ""}
-                                                                onChange={(e) => setEditSession((prev) => prev ? {
-                                                                    ...prev,
-                                                                    values: { ...prev.values, [equip.id]: { ...(prev.values[equip.id] ?? {}), [item.id]: e.target.value } },
-                                                                } : null)}
-                                                                style={{ width: 150, padding: "7px 10px", fontSize: 13 }}
-                                                            />
-                                                            {item.unit && <span style={{ fontSize: 12, color: "var(--steel)" }}>{item.unit}</span>}
-                                                        </div>
-                                                    )}
+                                                    {(item.type === "number" || item.type === "text" || item.type === "time") && (() => {
+                                                        const itemVal = equipVals[item.id] ?? "";
+                                                        const isNG = itemVal !== "" && isItemNG(item, itemVal);
+                                                        return (
+                                                            <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
+                                                                <input
+                                                                    className={`ph-input ${isNG ? "bad" : ""}`}
+                                                                    type={item.type === "number" ? "number" : item.type === "time" ? "time" : "text"}
+                                                                    value={itemVal}
+                                                                    onChange={(e) => setEditSession((prev) => prev ? {
+                                                                        ...prev,
+                                                                        values: { ...prev.values, [equip.id]: { ...(prev.values[equip.id] ?? {}), [item.id]: e.target.value } },
+                                                                    } : null)}
+                                                                    style={{
+                                                                        width: 150,
+                                                                        padding: "7px 10px",
+                                                                        fontSize: 13,
+                                                                        borderColor: isNG ? "#dc2626" : undefined,
+                                                                        backgroundColor: isNG ? "#fef2f2" : undefined,
+                                                                        color: isNG ? "#b91c1c" : undefined,
+                                                                        fontWeight: isNG ? 700 : undefined
+                                                                    }}
+                                                                />
+                                                                {item.unit && <span style={{ fontSize: 12, color: isNG ? "#b91c1c" : "var(--steel)", fontWeight: isNG ? 600 : 400 }}>{item.unit}</span>}
+                                                                {isNG && (
+                                                                    <span className="ph-badge-ng">
+                                                                        ⚠️ NG {item.helperText ? `(${item.helperText})` : ""}
+                                                                    </span>
+                                                                )}
+                                                            </div>
+                                                        );
+                                                    })()}
                                                 </div>
                                             ))}
 
