@@ -89,8 +89,9 @@ export async function GET(request: NextRequest) {
     return NextResponse.json(
       {
         success: false,
-        message: 'Gagal memuat data inspeksi powerhouse',
-        error: process.env.NODE_ENV === 'development' ? (error as Error).message : undefined,
+        message: (error as Error)?.message || 'Gagal memuat data inspeksi powerhouse',
+        error: (error as Error)?.message,
+        detail: (error as any)?.detail,
       },
       { status: 500 }
     );

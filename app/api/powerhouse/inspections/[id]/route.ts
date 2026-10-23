@@ -8,7 +8,7 @@ export async function DELETE(
 ) {
   const resolvedParams = await params;
   const { id } = resolvedParams;
-  const client = await pool.connect();
+  let client;
 
   try {
     if (!id) {
@@ -18,6 +18,7 @@ export async function DELETE(
       );
     }
 
+    client = await pool.connect();
     await client.query('BEGIN');
     await client.query(`DELETE FROM inspection_ng_items WHERE inspection_id = $1`, [id]);
     const result = await client.query(`DELETE FROM equipment_inspections WHERE id = $1`, [id]);
@@ -35,18 +36,21 @@ export async function DELETE(
       message: 'Data inspeksi berhasil dihapus',
     });
   } catch (error) {
-    await client.query('ROLLBACK');
+    if (client) {
+      try { await client.query('ROLLBACK'); } catch { /* ignore */ }
+    }
     console.error('❌ Error deleting powerhouse inspection:', error);
     return NextResponse.json(
       {
         success: false,
-        message: 'Gagal menghapus data inspeksi',
-        error: process.env.NODE_ENV === 'development' ? (error as Error).message : undefined,
+        message: (error as Error)?.message || 'Gagal menghapus data inspeksi',
+        error: (error as Error)?.message,
+        detail: (error as any)?.detail,
       },
       { status: 500 }
     );
   } finally {
-    client.release();
+    if (client) client.release();
   }
 }
 
@@ -56,7 +60,7 @@ export async function PATCH(
 ) {
   const resolvedParams = await params;
   const { id } = resolvedParams;
-  const client = await pool.connect();
+  let client;
 
   try {
     const body = await request.json();
@@ -69,6 +73,7 @@ export async function PATCH(
       );
     }
 
+    client = await pool.connect();
     await client.query('BEGIN');
 
     let query = `UPDATE equipment_inspections SET updated_at = CURRENT_TIMESTAMP`;
@@ -126,17 +131,20 @@ export async function PATCH(
       data: result.rows[0],
     });
   } catch (error) {
-    await client.query('ROLLBACK');
+    if (client) {
+      try { await client.query('ROLLBACK'); } catch { /* ignore */ }
+    }
     console.error('❌ Error updating powerhouse inspection:', error);
     return NextResponse.json(
       {
         success: false,
-        message: 'Gagal memperbarui data inspeksi',
-        error: process.env.NODE_ENV === 'development' ? (error as Error).message : undefined,
+        message: (error as Error)?.message || 'Gagal memperbarui data inspeksi',
+        error: (error as Error)?.message,
+        detail: (error as any)?.detail,
       },
       { status: 500 }
     );
   } finally {
-    client.release();
+    if (client) client.release();
   }
 }
