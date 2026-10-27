@@ -200,11 +200,13 @@ export function ScanModal({ isOpen, onClose }: ScanModalProps) {
               : `/status-ga/exit-lamp-pintu-darurat/${encodeURIComponent(id)}`;
             break;
 
-          case "panel":
+          case "panel": {
+            const qs = queryParams.toString();
             targetUrl = action === "history"
               ? `/status-ga/panel/riwayat/${encodeURIComponent(id)}`
-              : `/status-ga/panel/${encodeURIComponent(id)}`;
+              : (qs ? `/e-checksheet-panel?${qs}` : `/e-checksheet-panel?areaKey=${encodeURIComponent(id)}`);
             break;
+          }
 
           case "stop-kontak":
             targetUrl = action === "history"
@@ -212,9 +214,11 @@ export function ScanModal({ isOpen, onClose }: ScanModalProps) {
               : `/status-ga/form-inspeksi-stop-kontak/${encodeURIComponent(id)}`;
             break;
 
-          case "power-house":
-            targetUrl = `/status-ga/power-house`;
+          case "power-house": {
+            const qs = queryParams.toString();
+            targetUrl = qs ? `/status-ga/power-house?${qs}` : `/status-ga/power-house`;
             break;
+          }
 
           case "inf-jalan":
             targetUrl = action === "history"

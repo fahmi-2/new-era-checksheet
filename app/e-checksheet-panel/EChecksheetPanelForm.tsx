@@ -12,6 +12,7 @@ import {
   Calendar, User, ClipboardList, BarChart3, Info,
   ThermometerSun, Volume2, Wind, Sparkles, Gauge,
   ArrowRight, Building2, Shield, Trash2, Edit3, Eye, X,
+  Lock, QrCode,
 } from "lucide-react";
 
 // ─── STATIC DATA ─────────────────────────────────────────────────────────────
@@ -419,16 +420,18 @@ function Bar({ v, color = "#3b82f6", h = 4 }: { v: number; color?: string; h?: n
 }
 
 function SymBtn({
-  label, current, value, activeClass, onClick,
+  label, current, value, activeClass, onClick, disabled,
 }: {
-  label: string; current: string; value: SymbolValue; activeClass: string; onClick: () => void;
+  label: string; current: string; value: SymbolValue; activeClass: string; onClick: () => void; disabled?: boolean;
 }) {
   return (
     <button
       type="button"
+      disabled={disabled}
       className={`sym-btn ${current === value ? activeClass : ""}`}
       onClick={onClick}
       title={value === "O" ? "OK/Normal" : value === "X" ? "Abnormal" : ""}
+      style={disabled ? { opacity: 0.5, cursor: "not-allowed" } : undefined}
     >
       {label}
     </button>
@@ -436,16 +439,20 @@ function SymBtn({
 }
 
 function SymbolCell({
-  value, onChange,
+  value, onChange, disabled,
 }: {
   value: SymbolValue;
   onChange: (v: SymbolValue) => void;
+  disabled?: boolean;
 }) {
-  const toggle = (v: SymbolValue) => onChange(value === v ? "" : v);
+  const toggle = (v: SymbolValue) => {
+    if (disabled) return;
+    onChange(value === v ? "" : v);
+  };
   return (
-    <div className="sym-group">
-      <SymBtn label="O" current={value} value="O" activeClass="ok" onClick={() => toggle("O")} />
-      <SymBtn label="X" current={value} value="X" activeClass="nok" onClick={() => toggle("X")} />
+    <div className="sym-group" style={disabled ? { opacity: 0.6, pointerEvents: "none" } : undefined}>
+      <SymBtn label="O" current={value} value="O" activeClass="ok" onClick={() => toggle("O")} disabled={disabled} />
+      <SymBtn label="X" current={value} value="X" activeClass="nok" onClick={() => toggle("X")} disabled={disabled} />
     </div>
   );
 }
@@ -1528,40 +1535,54 @@ export function EChecksheetPanelForm() {
 
               {selArea && !isVerifiedForArea && (
                 <div style={{
-                  background: "#fffbeb", border: "1.5px solid #fde68a", borderRadius: 14,
+                  background: "#fff1f2", border: "1.5px solid #fecaca", borderRadius: 14,
                   padding: "18px 22px", display: "flex", flexDirection: "column", gap: 12
                 }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                    <AlertCircle size={20} color="#d97706" style={{ flexShrink: 0 }} />
+                    <div style={{
+                      width: 40, height: 40, borderRadius: 10, background: "#fee2e2",
+                      display: "grid", placeItems: "center", color: "#dc2626", flexShrink: 0
+                    }}>
+                      <Lock size={22} />
+                    </div>
                     <div>
-                      <div style={{ fontSize: 14, fontWeight: 700, color: "#92400e" }}>
-                        Verifikasi Lokasi Diperlukan
+                      <div style={{ fontSize: 14, fontWeight: 800, color: "#991b1b" }}>
+                        🔒 Form Checksheet Terkunci (Beku)
                       </div>
-                      <div style={{ fontSize: 12, color: "#b45309", marginTop: 2 }}>
-                        Scan QR Code di area <strong>{selArea.label}</strong> untuk memulai pengisian form.
+                      <div style={{ fontSize: 12, color: "#b91c1c", marginTop: 2 }}>
+                        Inspektor wajib melakukan scan QR Code pada panel di area <strong>{selArea.label}</strong> untuk membuka checksheet ini.
                       </div>
                     </div>
                   </div>
                   <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
-                    <div style={{
-                      padding: "8px 14px", background: "#fef3c7", border: "1px solid #fde68a",
-                      borderRadius: 9, fontSize: 12, color: "#78350f", fontWeight: 600
-                    }}>
-                      📱 Scan QR pada panel di area ini untuk verifikasi otomatis
-                    </div>
                     <button
-                      onClick={() => setIsVerifiedForArea(true)}
+                      type="button"
+                      onClick={() => router.push("/scan")}
                       style={{
-                        padding: "8px 16px", border: "1.5px solid #d97706", borderRadius: 9,
-                        background: "white", color: "#92400e", fontSize: 12, fontWeight: 600,
-                        cursor: "pointer", fontFamily: "inherit"
+                        display: "inline-flex", alignItems: "center", gap: 8,
+                        padding: "9px 18px", border: "none", borderRadius: 9,
+                        background: "#dc2626", color: "white", fontSize: 13, fontWeight: 700,
+                        cursor: "pointer", fontFamily: "inherit", boxShadow: "0 2px 8px -2px rgba(220,38,38,0.5)"
                       }}
                     >
-                      Lewati — Sudah di Area
+                      <QrCode size={16} /> Scan Barcode / QR Panel Sekarang
                     </button>
+                    {isAdminUser && (
+                      <button
+                        type="button"
+                        onClick={() => setIsVerifiedForArea(true)}
+                        style={{
+                          padding: "8px 14px", border: "1.5px dashed #f87171", borderRadius: 9,
+                          background: "#fff", color: "#991b1b", fontSize: 12, fontWeight: 600,
+                          cursor: "pointer", fontFamily: "inherit"
+                        }}
+                      >
+                        Bypass Mode (Admin Only)
+                      </button>
+                    )}
                   </div>
-                  <div style={{ fontSize: 11, color: "#b45309", fontStyle: "italic" }}>
-                    ⚠ Tombol Simpan tetap memerlukan verifikasi scan. Klik &quot;Lewati&quot; untuk bisa mengisi form, namun scan QR tetap wajib sebelum menyimpan.
+                  <div style={{ fontSize: 11.5, color: "#b91c1c" }}>
+                    ⚠ Semua kolom pengisian di bawah dibekukan sampai verifikasi scan QR berhasil dilakukan.
                   </div>
                 </div>
               )}
@@ -1757,52 +1778,75 @@ export function EChecksheetPanelForm() {
                                 <td style={{ textAlign: "center", background: filled ? "#fff7ed" : "" }}>
                                   <input type="text" value={r.temp} placeholder="—"
                                     className="num-in"
-                                    style={{ borderColor: r.temp && +r.temp > 65 ? "#fca5a5" : "" }}
+                                    disabled={!isVerifiedForArea}
+                                    style={{
+                                      borderColor: r.temp && +r.temp > 65 ? "#fca5a5" : "",
+                                      ...(!isVerifiedForArea ? { background: "#f8fafc", cursor: "not-allowed", opacity: 0.6 } : {})
+                                    }}
                                     onChange={e => updR(panel.id, { temp: e.target.value })}
                                   />
                                 </td>
-                                <td><SymbolCell value={r.bau} onChange={v => updR(panel.id, { bau: v })} /></td>
-                                <td><SymbolCell value={r.suara} onChange={v => updR(panel.id, { suara: v })} /></td>
-                                <td><SymbolCell value={r.fiveS} onChange={v => updR(panel.id, { fiveS: v })} /></td>
+                                <td><SymbolCell value={r.bau} onChange={v => updR(panel.id, { bau: v })} disabled={!isVerifiedForArea} /></td>
+                                <td><SymbolCell value={r.suara} onChange={v => updR(panel.id, { suara: v })} disabled={!isVerifiedForArea} /></td>
+                                <td><SymbolCell value={r.fiveS} onChange={v => updR(panel.id, { fiveS: v })} disabled={!isVerifiedForArea} /></td>
                                 <td style={{ textAlign: "center" }}>
                                   <input type="text" value={r.tegOut3Phase} placeholder="—"
                                     className="num-in"
-                                    style={{ borderColor: r.tegOut3Phase && (+r.tegOut3Phase < 380 || +r.tegOut3Phase > 415) ? "#fca5a5" : "" }}
+                                    disabled={!isVerifiedForArea}
+                                    style={{
+                                      borderColor: r.tegOut3Phase && (+r.tegOut3Phase < 380 || +r.tegOut3Phase > 415) ? "#fca5a5" : "",
+                                      ...(!isVerifiedForArea ? { background: "#f8fafc", cursor: "not-allowed", opacity: 0.6 } : {})
+                                    }}
                                     onChange={e => updR(panel.id, { tegOut3Phase: e.target.value })}
                                   />
                                 </td>
                                 <td style={{ textAlign: "center" }}>
                                   <input type="text" value={r.tegOut1Phase} placeholder="—"
                                     className="num-in"
-                                    style={{ borderColor: r.tegOut1Phase && (+r.tegOut1Phase < 220 || +r.tegOut1Phase > 240) ? "#fca5a5" : "" }}
+                                    disabled={!isVerifiedForArea}
+                                    style={{
+                                      borderColor: r.tegOut1Phase && (+r.tegOut1Phase < 220 || +r.tegOut1Phase > 240) ? "#fca5a5" : "",
+                                      ...(!isVerifiedForArea ? { background: "#f8fafc", cursor: "not-allowed", opacity: 0.6 } : {})
+                                    }}
                                     onChange={e => updR(panel.id, { tegOut1Phase: e.target.value })}
                                   />
                                 </td>
                                 <td style={{ textAlign: "center" }}>
                                   <input type="text" value={r.arusR} placeholder="—"
-                                    className="num-in" onChange={e => updR(panel.id, { arusR: e.target.value })} />
+                                    className="num-in"
+                                    disabled={!isVerifiedForArea}
+                                    style={!isVerifiedForArea ? { background: "#f8fafc", cursor: "not-allowed", opacity: 0.6 } : undefined}
+                                    onChange={e => updR(panel.id, { arusR: e.target.value })} />
                                 </td>
                                 <td style={{ textAlign: "center" }}>
                                   <input type="text" value={r.arusS} placeholder="—"
-                                    className="num-in" onChange={e => updR(panel.id, { arusS: e.target.value })} />
+                                    className="num-in"
+                                    disabled={!isVerifiedForArea}
+                                    style={!isVerifiedForArea ? { background: "#f8fafc", cursor: "not-allowed", opacity: 0.6 } : undefined}
+                                    onChange={e => updR(panel.id, { arusS: e.target.value })} />
                                 </td>
                                 <td style={{ textAlign: "center" }}>
                                   <input type="text" value={r.arusT} placeholder="—"
-                                    className="num-in" onChange={e => updR(panel.id, { arusT: e.target.value })} />
+                                    className="num-in"
+                                    disabled={!isVerifiedForArea}
+                                    style={!isVerifiedForArea ? { background: "#f8fafc", cursor: "not-allowed", opacity: 0.6 } : undefined}
+                                    onChange={e => updR(panel.id, { arusT: e.target.value })} />
                                 </td>
                                 <td>
                                   <input
                                     type="text"
                                     value={r.catatan}
+                                    disabled={!isVerifiedForArea}
                                     placeholder={rowNg ? "Wajib diisi jika NG… *" : "Opsional…"}
                                     className="note-in"
-                                    style={
-                                      missingNote
+                                    style={{
+                                      ...(missingNote
                                         ? { borderColor: "#ef4444", background: "#fef2f2", boxShadow: "0 0 0 2px rgba(239,68,68,.15)" }
                                         : rowNg
                                           ? { borderColor: "#f97316" }
-                                          : {}
-                                    }
+                                          : {}),
+                                      ...(!isVerifiedForArea ? { background: "#f8fafc", cursor: "not-allowed", opacity: 0.6 } : {})
+                                    }}
                                     onChange={e => updR(panel.id, { catatan: e.target.value })}
                                   />
                                 </td>

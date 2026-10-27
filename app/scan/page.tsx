@@ -272,14 +272,18 @@ function buildTargetUrl(result: string): string | null {
         `/status-ga/exit-lamp-pintu-darurat/${encodeURIComponent(pathPart.replace("exit-lamp-pintu-darurat/", ""))}`,
 
       "panel": () => {
-        const v = p.get("openPanel");
-        return v ? `/status-ga/panel?openPanel=${encodeURIComponent(v)}` : "";
+        const v = p.get("openPanel") || p.get("areaKey");
+        const queryStr = p.toString();
+        return queryStr ? `/e-checksheet-panel?${queryStr}` : (v ? `/e-checksheet-panel?areaKey=${encodeURIComponent(v)}` : `/e-checksheet-panel`);
       },
 
       "form-inspeksi-stop-kontak": () =>
         `/status-ga/form-inspeksi-stop-kontak/${encodeURIComponent(pathPart.replace("form-inspeksi-stop-kontak/", ""))}`,
 
-      "power-house": () => `/status-ga/power-house`,
+      "power-house": () => {
+        const queryStr = p.toString();
+        return queryStr ? `/status-ga/power-house?${queryStr}` : `/status-ga/power-house`;
+      },
 
       "ga-inf-jalan": () => {
         const v = p.get("search");

@@ -162,6 +162,23 @@ const PANEL_AREAS = [
   { key: "AREA-OTHER", label: "Area Lain (SUMP/OLP/dll)", group: "B", months: "Feb, Mei, Agu, Nov" },
 ];
 
+// Peralatan Power House — 13 unit vital di 4 sistem
+const POWER_HOUSE_EQUIPMENT = [
+  { id: "GENSET-01", name: "Genset (Unit Utama)", groupId: "GEN_FUEL", groupName: "Genset & Fuel System", desc: "Mesin, Radiator, Solar, V-Belt, Running Hour" },
+  { id: "AKI-OLI-GENSET", name: "Aki & Oli Genset", groupId: "GEN_FUEL", groupName: "Genset & Fuel System", desc: "Air Accu, Oli Mesin, Marking Pull, Suhu Kabel, Voltase" },
+  { id: "TANGKI-SOLAR", name: "Tangki Solar Harian", groupId: "GEN_FUEL", groupName: "Genset & Fuel System", desc: "Leveling, Pompa Solar, Pipa, Volume > 3000L" },
+  { id: "MAIN-PANEL", name: "Main Panel Distribusi ACB", groupId: "DIST_LISTRIK", groupName: "Distribusi Listrik TM & TR", desc: "Power Factor, Arus R/S/T, Frekuensi, Voltase" },
+  { id: "TRAVO", name: "Main Distribution Transformer", groupId: "DIST_LISTRIK", groupName: "Distribusi Listrik TM & TR", desc: "Level Oli, Lampu Incoming/Outgoing, Suhu Trafo" },
+  { id: "STORAGE-TANK", name: "Tangki Penampung Udara", groupId: "AIR_COMP", groupName: "Air Compressor & Dryer", desc: "Air Pressure 5.0-11.5 kg/cm², Saluran Kondensasi" },
+  { id: "COMP-FIX-3", name: "Compressor Fixed Speed Unit 3", groupId: "AIR_COMP", groupName: "Air Compressor & Dryer", desc: "GA55 Unit 3: Suhu Comp, Running Hours, dP Separator" },
+  { id: "COMP-VSD", name: "Compressor VSD", groupId: "AIR_COMP", groupName: "Air Compressor & Dryer", desc: "GA55 VSD 1, 4, 5: Suhu, Level Oli, Drain, dP Oil" },
+  { id: "PANEL-KONTAKTOR-COMP", name: "Panel Daya & Kontaktor Kompresor", groupId: "AIR_COMP", groupName: "Air Compressor & Dryer", desc: "Suhu K21, F21, K23, K22, Arus Motor Screw & Fan" },
+  { id: "TERMOGRAFI-COMP-VSD", name: "Termografi Suhu Kompresor VSD", groupId: "AIR_COMP", groupName: "Air Compressor & Dryer", desc: "In/Out EPCOS, Fan Radial, Inverter Kabel & Koneksi" },
+  { id: "DRYER-ARX90", name: "Air Dryer Orion ARX90HL", groupId: "AIR_COMP", groupName: "Air Compressor & Dryer", desc: "Air Pressure 0.5-0.7 MPa, Evaporator Pressure" },
+  { id: "DRYER-FX14", name: "Air Dryer Atlas Copco FX14", groupId: "AIR_COMP", groupName: "Air Compressor & Dryer", desc: "Air Pressure, Evaporator, Indikator Filter, Dewpoint" },
+  { id: "BOOSTER-PUMP", name: "Fire Hydrant Booster Pump", groupId: "FIRE_HYDRANT", groupName: "Fire Hydrant System", desc: "Pompa 1, 2, 3: Suara, Kopling, Pressure ~3 Bar" },
+];
+
 const SMOKE_DETECTOR_AREAS = ["area-1", "area-2", "area-3", "area-4", "area-5"];
 const EMERGENCY_AREAS = ["genba-a", "genba-b", "genba-c", "warehouse", "office", "pump-room", "power-house", "training-room", "auditorium"];
 const EXIT_LAMP_CATEGORIES = ["exit-lamp", "titik-kumpul", "pintu-darurat"];
@@ -399,9 +416,12 @@ function generateLiftBarangPreventifQR(): QRConfig[] {
   return LIFT_BARANG_SUB_TYPES.map(subType => ({ type: "Lift Preventif", title: `Lift Barang ${subType.charAt(0).toUpperCase() + subType.slice(1)}`, url: `echecksheet:///status-ga/inspeksi-preventif-lift-barang/${subType}` }));
 }
 function generatePowerHouseQR(): QRConfig[] {
-  return [
-    { type: "Power House", title: "Power House Utilitas & Travo", url: "echecksheet:///status-ga/power-house", description: "Pemeriksaan 13 peralatan vital Power House" }
-  ];
+  return POWER_HOUSE_EQUIPMENT.map((eq) => ({
+    type: "Power House",
+    title: `Power House - ${eq.name}`,
+    url: `echecksheet:///status-ga/power-house?groupId=${encodeURIComponent(eq.groupId)}&equipId=${encodeURIComponent(eq.id)}&_scanned=true`,
+    description: `${eq.groupName} · ${eq.desc}`,
+  }));
 }
 
 // ──────────────────────────────────────────────────────────────────────────────
@@ -432,7 +452,7 @@ export default function QRGeneratorPage() {
     { id: "exit-lamp", label: "🚪 Exit Lamp", count: EXIT_LAMP_CATEGORIES.length, generator: generateExitLampQR },
     { id: "panel", label: "⚡ Panel", count: PANEL_AREAS.length, generator: generatePanelQR },
     { id: "stop-kontak", label: "🔌 Stop Kontak", count: STOP_KONTAK_TYPES.length, generator: generateStopKontakQR },
-    { id: "power-house", label: "🏭 Power House", count: 1, generator: generatePowerHouseQR },
+    { id: "power-house", label: "🏭 Power House", count: POWER_HOUSE_EQUIPMENT.length, generator: generatePowerHouseQR },
     { id: "inf-jalan", label: "🛣️ Inf. Jalan", count: INF_JALAN_AREAS.length, generator: generateInfJalanQR },
     { id: "tg-listrik", label: "🪜 Tangga Listrik", count: TG_LISTRIK_AREAS.length, generator: generateTgListrikQR },
     { id: "lift-preventif", label: "🔧 Lift Preventif", count: LIFT_BARANG_SUB_TYPES.length, generator: generateLiftBarangPreventifQR },

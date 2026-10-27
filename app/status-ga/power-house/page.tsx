@@ -6,6 +6,7 @@ import {
     Zap, Wind, Flame, Shield, ChevronRight, ChevronLeft, CheckCircle2, AlertTriangle,
     Save, Trash2, Edit3, X, ChevronDown, RefreshCw, Info, ClipboardList, History,
     Loader2, MapPin, Clock, Wand2, Search, FileCheck2, Check, Activity,
+    Lock, QrCode,
 } from "lucide-react";
 import { Sidebar } from "@/components/Sidebar";
 import { useAuth } from "@/lib/auth-context";
@@ -846,6 +847,43 @@ export default function EChecksheetPowerHouseForm() {
         return () => clearTimeout(timer);
     }, [toast]);
 
+    // Verifikasi Scan QR per Peralatan Power House
+    const isAdminUser = !!(user && ["admin", "superadmin"].includes(user.role));
+    const [scannedEquipIds, setScannedEquipIds] = useState<string[]>([]);
+
+    // Tangkap query params saat scan QR (?groupId=...&equipId=...&_scanned=true)
+    useEffect(() => {
+        if (typeof window === "undefined") return;
+        const urlParams = new URLSearchParams(window.location.search);
+        const isScanned = urlParams.get("_scanned") === "true";
+        const qEquipId = urlParams.get("equipId") || "";
+        const qGroupId = urlParams.get("groupId") || "";
+
+        if (isScanned && qEquipId) {
+            setScannedEquipIds((prev) => (prev.includes(qEquipId) ? prev : [...prev, qEquipId]));
+            const targetEquip = getEquipmentById(qEquipId);
+            const parentGroup = getGroupForEquipment(qEquipId);
+            if (parentGroup) {
+                setSelectedGroupId(parentGroup.id);
+            } else if (qGroupId) {
+                setSelectedGroupId(qGroupId);
+            }
+            if (targetEquip) {
+                setCurrentEquipId(targetEquip.id);
+                // Jika shift belum diisi, set default shift pagi
+                setShiftStart((prev) => prev || "07:00");
+                setShiftEnd((prev) => prev || "19:00");
+                setStep("inspection-item");
+            }
+        }
+    }, []);
+
+    const isCurrentEquipVerified = useMemo(() => {
+        if (isAdminUser) return true;
+        if (!currentEquipId) return false;
+        return scannedEquipIds.includes(currentEquipId);
+    }, [isAdminUser, currentEquipId, scannedEquipIds]);
+
     const currentGroup = useMemo(() => (selectedGroupId ? SYSTEM_GROUPS.find((g) => g.id === selectedGroupId) ?? null : null), [selectedGroupId]);
     const currentEquip = useMemo(() => (currentEquipId ? getEquipmentById(currentEquipId) : null), [currentEquipId]);
     const currentEquipGroup = useMemo(() => (currentEquipId ? getGroupForEquipment(currentEquipId) : null), [currentEquipId]);
@@ -1559,6 +1597,10 @@ export default function EChecksheetPowerHouseForm() {
                                                         <span className="ph-tag info"><CheckCircle2 size={12} /> Siap disimpan</span>
                                                     ) : filled ? (
                                                         <span className="ph-tag warn">Sebagian</span>
+                                                    ) : (!isAdminUser && !scannedEquipIds.includes(equip.id)) ? (
+                                                        <span className="ph-tag none" style={{ color: "#b91c1c", background: "#fee2e2" }}>
+                                                            <Lock size={10} style={{ display: "inline", marginRight: 3 }} /> Butuh Scan
+                                                        </span>
                                                     ) : (
                                                         <span className="ph-tag none">Belum diisi</span>
                                                     )}
@@ -1621,14 +1663,95 @@ export default function EChecksheetPowerHouseForm() {
                                             </div>
                                             <div className="ph-panel-sub">{currentEquipGroup.name} · {totalN} item pemeriksaan</div>
                                         </div>
-                                        <button
-                                            className="ph-quick"
-                                            onClick={() => handleQuickFillNormal(currentEquip)}
-                                            title="Isi semua item toggle yang masih kosong dengan Normal (O)"
-                                        >
-                                            <Wand2 size={14} /> Isi cepat Normal (O)
-                                        </button>
+                                        {isCurrentEquipVerified && (
+                                            <button
+                                                className="ph-quick"
+                                                onClick={() => handleQuickFillNormal(currentEquip)}
+                                                title="Isi semua item toggle yang masih kosong dengan Normal (O)"
+                                            >
+                                                <Wand2 size={14} /> Isi cepat Normal (O)
+                                            </button>
+                                        )}
                                     </div>
+
+                                    {!isCurrentEquipVerified && (
+                                        <div style={{
+                                            margin: "16px 20px 0",
+                                            padding: "16px 20px",
+                                            background: "#fff1f2",
+                                            border: "1.5px solid #fecaca",
+                                            borderRadius: 14,
+                                            display: "flex",
+                                            flexDirection: "column",
+                                            gap: 12
+                                        }}>
+                                            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                                                <div style={{
+                                                    width: 42,
+                                                    height: 42,
+                                                    borderRadius: 10,
+                                                    background: "#fee2e2",
+                                                    display: "grid",
+                                                    placeItems: "center",
+                                                    color: "#dc2626",
+                                                    flexShrink: 0
+                                                }}>
+                                                    <Lock size={22} />
+                                                </div>
+                                                <div>
+                                                    <div style={{ fontSize: 14.5, fontWeight: 800, color: "#991b1b" }}>
+                                                        🔒 Checksheet Alat Terkunci (Beku)
+                                                    </div>
+                                                    <div style={{ fontSize: 12.5, color: "#b91c1c", marginTop: 2 }}>
+                                                        Inspektor wajib melakukan scan QR Code pada peralatan <strong>{currentEquip.name}</strong> terlebih dahulu untuk membuka checksheet ini.
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => router.push("/scan")}
+                                                    style={{
+                                                        display: "inline-flex",
+                                                        alignItems: "center",
+                                                        gap: 8,
+                                                        padding: "9px 18px",
+                                                        border: "none",
+                                                        borderRadius: 9,
+                                                        background: "#dc2626",
+                                                        color: "white",
+                                                        fontSize: 13,
+                                                        fontWeight: 700,
+                                                        cursor: "pointer",
+                                                        boxShadow: "0 2px 8px -2px rgba(220,38,38,0.5)"
+                                                    }}
+                                                >
+                                                    <QrCode size={16} /> Scan Barcode / QR Alat Ini Sekarang
+                                                </button>
+                                                {isAdminUser && (
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => setScannedEquipIds((prev) => [...prev, currentEquip.id])}
+                                                        style={{
+                                                            padding: "8px 14px",
+                                                            border: "1.5px dashed #f87171",
+                                                            borderRadius: 9,
+                                                            background: "#fff",
+                                                            color: "#991b1b",
+                                                            fontSize: 12,
+                                                            fontWeight: 600,
+                                                            cursor: "pointer"
+                                                        }}
+                                                    >
+                                                        Bypass Mode (Admin Only)
+                                                    </button>
+                                                )}
+                                            </div>
+                                            <div style={{ fontSize: 11.5, color: "#b91c1c" }}>
+                                                ⚠ Seluruh tombol input pemeriksaan di bawah dalam kondisi beku (read-only) sampai scan QR berhasil diverifikasi.
+                                            </div>
+                                        </div>
+                                    )}
 
                                     <div className="ph-prog">
                                         <div className="ph-prog-bar">
@@ -1642,7 +1765,7 @@ export default function EChecksheetPowerHouseForm() {
                                         ) : null}
                                     </div>
 
-                                    <div className="ph-tw">
+                                    <div className="ph-tw" style={!isCurrentEquipVerified ? { opacity: 0.65, pointerEvents: "none", userSelect: "none" } : undefined}>
                                         <table className="ph-t">
                                             <thead>
                                                 <tr>
@@ -1674,12 +1797,13 @@ export default function EChecksheetPowerHouseForm() {
                                                                 </td>
                                                                 <td style={{ minWidth: 200 }}>
                                                                     {item.type === "toggle" && (
-                                                                        <ToggleCell value={value} onChange={(v) => handleItemChange(currentEquip.id, item.id, v)} />
+                                                                        <ToggleCell value={value} disabled={!isCurrentEquipVerified} onChange={(v) => handleItemChange(currentEquip.id, item.id, v)} />
                                                                     )}
                                                                     {item.type === "dropdown" && (
                                                                         <DropdownCell
                                                                             value={value}
                                                                             bad={ng}
+                                                                            disabled={!isCurrentEquipVerified}
                                                                             options={item.options ?? []}
                                                                             onChange={(v) => handleItemChange(currentEquip.id, item.id, v)}
                                                                         />
@@ -1689,6 +1813,7 @@ export default function EChecksheetPowerHouseForm() {
                                                                             <input
                                                                                 type="number"
                                                                                 inputMode="decimal"
+                                                                                disabled={!isCurrentEquipVerified}
                                                                                 className={ng ? "bad" : ""}
                                                                                 value={value}
                                                                                 placeholder={item.placeholder ?? "0"}
@@ -1700,6 +1825,7 @@ export default function EChecksheetPowerHouseForm() {
                                                                     {item.type === "time" && (
                                                                         <input
                                                                             type="time"
+                                                                            disabled={!isCurrentEquipVerified}
                                                                             className="ph-input"
                                                                             value={value}
                                                                             onChange={(e) => handleItemChange(currentEquip.id, item.id, e.target.value)}
@@ -1709,6 +1835,7 @@ export default function EChecksheetPowerHouseForm() {
                                                                         <div className="ph-field-in">
                                                                             <input
                                                                                 type="text"
+                                                                                disabled={!isCurrentEquipVerified}
                                                                                 className="plain"
                                                                                 value={value}
                                                                                 placeholder={item.placeholder ?? ""}
@@ -1734,6 +1861,7 @@ export default function EChecksheetPowerHouseForm() {
                                                                             <span className="ph-note-l"><Edit3 size={13} /> Tindakan perbaikan</span>
                                                                             <textarea
                                                                                 rows={2}
+                                                                                disabled={!isCurrentEquipVerified}
                                                                                 className={noteVal.trim() ? "has" : ""}
                                                                                 value={noteVal}
                                                                                 onChange={(e) => setCatatanNG((prev) => ({ ...prev, [ngKey]: e.target.value }))}
@@ -1751,12 +1879,13 @@ export default function EChecksheetPowerHouseForm() {
                                     </div>
 
                                     {/* ─── Catatan / Keterangan Tambahan ─── */}
-                                    <div className="ph-catatan-box">
+                                    <div className="ph-catatan-box" style={!isCurrentEquipVerified ? { opacity: 0.65, pointerEvents: "none" } : undefined}>
                                         <div className="ph-catatan-box-t">
                                             <Edit3 size={14} /> Catatan / Keterangan Tambahan Alat (Opsional)
                                         </div>
                                         <textarea
                                             rows={2}
+                                            disabled={!isCurrentEquipVerified}
                                             value={getItemValue(currentEquip.id, "catatan")}
                                             onChange={(e) => handleItemChange(currentEquip.id, "catatan", e.target.value)}
                                             placeholder="Masukkan catatan kondisi alat, rekomendasi, atau temuan observasi tambahan..."
@@ -1772,12 +1901,17 @@ export default function EChecksheetPowerHouseForm() {
                                                 Berikutnya <ChevronRight size={15} />
                                             </button>
                                         </div>
+                                        {!isCurrentEquipVerified && (
+                                            <span style={{ fontSize: 12, color: "#dc2626", fontWeight: 700 }}>
+                                                🔒 Scan QR alat terlebih dahulu untuk menyimpan
+                                            </span>
+                                        )}
                                         <button
                                             className="ph-save"
                                             onClick={() => handleSaveEquip(currentEquip.id)}
-                                            disabled={isSaving || !complete}
-                                            title={!complete ? "Isi semua baris pemeriksaan sebelum menyimpan" : "Simpan data ke database"}
-                                            style={{ background: !complete ? "#b5c0cf" : isSaved ? "#0284c7" : "#16a34a", opacity: isSaving ? 0.7 : 1 }}
+                                            disabled={isSaving || !complete || !isCurrentEquipVerified}
+                                            title={!isCurrentEquipVerified ? "Scan QR alat terlebih dahulu" : !complete ? "Isi semua baris pemeriksaan sebelum menyimpan" : "Simpan data ke database"}
+                                            style={{ background: (!complete || !isCurrentEquipVerified) ? "#b5c0cf" : isSaved ? "#0284c7" : "#16a34a", opacity: isSaving ? 0.7 : 1 }}
                                         >
                                             {isSaving ? <Loader2 size={16} className="ph-spin" /> : <Save size={16} />}
                                             {isSaving ? "Menyimpan..." : isSaved ? "Perbarui & simpan ulang" : "Simpan alat ini"}
