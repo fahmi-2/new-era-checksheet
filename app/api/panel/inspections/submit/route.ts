@@ -24,6 +24,9 @@ interface SubmitPanelData {
   year: number;
   tgl: string;
   picCheck: string;
+  spvFrm?: string;
+  department?: string;
+  subArea?: string;
   readings: PanelReadingInput[];
 }
 
@@ -55,6 +58,9 @@ export async function POST(request: NextRequest) {
         data.year,
         data.tgl,
         data.picCheck,
+        data.spvFrm || null,
+        data.department || 'PGA Department - Utility Sect',
+        data.subArea || null,
       ]
     );
 

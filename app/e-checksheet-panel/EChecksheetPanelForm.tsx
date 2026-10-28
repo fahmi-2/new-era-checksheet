@@ -22,6 +22,8 @@ type MonthGroup = "A" | "B" | "C";
 interface AreaConfig {
   key: string;
   label: string;
+  subArea?: string;
+  department?: string;
   group: MonthGroup;
   months: string[];
   panels: PanelConfig[];
@@ -30,9 +32,37 @@ interface AreaConfig {
 interface PanelConfig {
   id: string;
   name: string;
+  displayName?: string;
 }
 
 const AREAS: AreaConfig[] = [
+  {
+    key: "PH-A",
+    label: "POWER HOUSE A",
+    subArea: "GENERATOR ROOM DAN PANEL ROOM",
+    department: "PGA Department - Utility Sect",
+    group: "A",
+    months: ["Januari", "April", "Juli", "Oktober"],
+    panels: [
+      { id: "PHA-FDR1", name: "FEEDER 1" },
+      { id: "PHA-FDR2", name: "FEEDER 2" },
+      { id: "PHA-CAP1", name: "KAPASITOR BANK", displayName: "KAPASITOR BANK 1" },
+      { id: "PHA-MAIN-ACB", name: "MAIN ACB" },
+      { id: "PHA-AUTO-SYNK", name: "AUTO SYNKRON" },
+      { id: "PHA-GCP-500", name: "GCP 2X 500 KVA" },
+      { id: "PHA-GEN1", name: "GENSET 1" },
+      { id: "PHA-GEN2", name: "GENSET 2" },
+      { id: "PHA-LIP-ME", name: "LIP ME" },
+      { id: "PHA-BATT", name: "BATTERY" },
+      { id: "PHA-GND", name: "GROUNDING" },
+      { id: "PHA-COMP1", name: "COMPRESSOR 1" },
+      { id: "PHA-COMP2", name: "COMPRESSOR 2" },
+      { id: "PHA-HYDRANT", name: "PANEL HYDRANT" },
+      { id: "PHA-BOOSTER", name: "BOOSTER PUMP" },
+      { id: "PHA-JB", name: "JUNCTION BOX" },
+      { id: "PHA-CAP2", name: "KAPASITOR BANK", displayName: "KAPASITOR BANK 2" },
+    ],
+  },
   {
     key: "GENBA-A", label: "Genba A (SUM)", group: "A",
     months: ["Januari", "April", "Juli", "Oktober"],
@@ -130,7 +160,7 @@ const AREAS: AreaConfig[] = [
 
 // ─── TYPES ────────────────────────────────────────────────────────────────────
 
-type SymbolValue = "O" | "X" | "";
+type SymbolValue = "O" | "X" | "⊗" | "";
 
 interface PanelReading {
   panelId: string;
@@ -150,6 +180,8 @@ interface InspectionSession {
   id: string;
   areaKey: string;
   areaLabel: string;
+  subArea?: string;
+  department?: string;
   month: string;
   year: number;
   readings: PanelReading[];
@@ -420,9 +452,9 @@ function Bar({ v, color = "#3b82f6", h = 4 }: { v: number; color?: string; h?: n
 }
 
 function SymBtn({
-  label, current, value, activeClass, onClick, disabled,
+  label, current, value, activeClass, onClick, disabled, title,
 }: {
-  label: string; current: string; value: SymbolValue; activeClass: string; onClick: () => void; disabled?: boolean;
+  label: string; current: string; value: SymbolValue; activeClass: string; onClick: () => void; disabled?: boolean; title?: string;
 }) {
   return (
     <button
@@ -430,7 +462,7 @@ function SymBtn({
       disabled={disabled}
       className={`sym-btn ${current === value ? activeClass : ""}`}
       onClick={onClick}
-      title={value === "O" ? "OK/Normal" : value === "X" ? "Abnormal" : ""}
+      title={title || (value === "O" ? "Kondisi OK" : value === "X" ? "Kondisi tidak OK" : value === "⊗" ? "Kondisi tidak OK, sudah diperbaiki (OK)" : "")}
       style={disabled ? { opacity: 0.5, cursor: "not-allowed" } : undefined}
     >
       {label}
@@ -451,8 +483,9 @@ function SymbolCell({
   };
   return (
     <div className="sym-group" style={disabled ? { opacity: 0.6, pointerEvents: "none" } : undefined}>
-      <SymBtn label="O" current={value} value="O" activeClass="ok" onClick={() => toggle("O")} disabled={disabled} />
-      <SymBtn label="X" current={value} value="X" activeClass="nok" onClick={() => toggle("X")} disabled={disabled} />
+      <SymBtn label="O" current={value} value="O" activeClass="ok" onClick={() => toggle("O")} disabled={disabled} title="O: Kondisi OK" />
+      <SymBtn label="X" current={value} value="X" activeClass="nok" onClick={() => toggle("X")} disabled={disabled} title="X: Kondisi tidak OK" />
+      <SymBtn label="⊗" current={value} value="⊗" activeClass="rep" onClick={() => toggle("⊗")} disabled={disabled} title="⊗: Kondisi tidak OK, tapi sekarang sudah diperbaiki (OK)" />
     </div>
   );
 }
@@ -490,6 +523,7 @@ export function EChecksheetPanelForm() {
   const [readings, setReadings] = useState<PanelReading[]>([]);
   const [tgl, setTgl] = useState("");
   const [picCheck, setPicCheck] = useState("");
+  const [spvFrm, setSpvFrm] = useState("");
   const [sessions, setSessions] = useState<InspectionSession[]>([]);
   const [isSaving, setIsSaving] = useState(false);
   const [isLoadingSessions, setIsLoadingSessions] = useState(false);
@@ -538,6 +572,7 @@ export function EChecksheetPanelForm() {
     setReadings(area.panels.map(p => mkReading(p.id)));
     setTgl(getNowDateTimeString());
     setPicCheck(user?.fullName || "");
+    setSpvFrm("");
     // Auto-verifikasi jika area cocok dengan URL QR atau user adalah admin
     const verifiedByQR = urlScanned && urlAreaKey === area.key;
     setIsVerifiedForArea(verifiedByQR || isAdminUser);
@@ -557,7 +592,7 @@ export function EChecksheetPanelForm() {
 
   const resetForm = () => {
     setSelArea(null); setSelMonth(""); setReadings([]);
-    setTgl(""); setPicCheck(user?.fullName || "");
+    setTgl(""); setPicCheck(user?.fullName || ""); setSpvFrm("");
     scrollTop();
   };
 
@@ -583,11 +618,14 @@ export function EChecksheetPanelForm() {
       id: newId,
       areaKey: selArea.key,
       areaLabel: selArea.label,
+      subArea: selArea.subArea,
+      department: selArea.department || "PGA Department - Utility Sect",
       month: selMonth,
       year: selYear,
       readings: readings.map(r => ({ ...r })),
       tgl: tgl || getNowDateTimeString(),
       picCheck: picCheck || user?.fullName || "-",
+      spvFrm: spvFrm || undefined,
       savedAt: Date.now(),
     };
 
@@ -627,12 +665,15 @@ export function EChecksheetPanelForm() {
 
   const handleSaveEdit = async () => {
     if (!editingSession) return;
+    const spvEl = document.getElementById("edit-spv-input") as HTMLInputElement | null;
+    const spvVal = spvEl ? spvEl.value : editingSession.spvFrm;
     try {
       const res = await fetch("/e-checksheet-ga/api/panel/inspections/edit", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           id: editingSession.id,
+          spvFrm: spvVal,
           readings: editReadings,
         }),
       });
@@ -739,8 +780,11 @@ export function EChecksheetPanelForm() {
 
   const totalFilteredNg = Object.values(currentFilteredNgCounts).reduce((a, b) => a + b, 0);
 
-  const panelOf = (id: string) =>
-    AREAS.flatMap(a => a.panels).find(p => p.id === id)?.name ?? id;
+  const panelOf = (id: string) => {
+    const p = AREAS.flatMap(a => a.panels).find(item => item.id === id);
+    if (!p) return id;
+    return p.displayName ? `${p.name} (${p.displayName})` : p.name;
+  };
 
   const areasByGroup: Record<MonthGroup, AreaConfig[]> = { A: [], B: [], C: [] };
   AREAS.forEach(a => areasByGroup[a.group].push(a));
@@ -820,9 +864,9 @@ export function EChecksheetPanelForm() {
               <span style={{ fontSize: 11, fontWeight: 700, color: "#94a3b8" }}>SIMBOL:</span>
               <div className="legend">
                 {[
-                  { sym: "O", cls: "ok", label: "OK / Normal", bg: "#dcfce7", border: "#86efac", tc: "#15803d" },
-                  { sym: "X", cls: "nok", label: "Abnormal (perlu tindakan)", bg: "#fee2e2", border: "#fca5a5", tc: "#b91c1c" },
-
+                  { sym: "O", cls: "ok", label: "Kondisi OK", bg: "#dcfce7", border: "#86efac", tc: "#15803d" },
+                  { sym: "X", cls: "nok", label: "Kondisi tidak OK", bg: "#fee2e2", border: "#fca5a5", tc: "#b91c1c" },
+                  { sym: "⊗", cls: "rep", label: "Kondisi tidak OK, tapi sekarang sudah diperbaiki sehingga kondisinya OK", bg: "#fef3c7", border: "#fcd34d", tc: "#b45309" },
                 ].map(l => (
                   <div key={l.sym} className="leg-item">
                     <div className="leg-sym" style={{ background: l.bg, border: `1.5px solid ${l.border}`, color: l.tc }}>
@@ -1260,7 +1304,8 @@ export function EChecksheetPanelForm() {
                             </div>
                             <div style={{ fontSize: 11, color: "#94a3b8", marginTop: 2 }}>
                               {s.month} {s.year}
-                              {s.picCheck && <> · Pengisi (PIC): <b style={{ color: "#334155" }}>{s.picCheck}</b></>}
+                              {s.picCheck && <> · PIC: <b style={{ color: "#334155" }}>{s.picCheck}</b></>}
+                              {s.spvFrm && <> · Spv/Frm: <b style={{ color: "#334155" }}>{s.spvFrm}</b></>}
                               {s.tgl && <> · Tgl: {s.tgl}</>}
                               {s.isEdited && s.updatedAt && (
                                 <span style={{ color: "#b45309", marginLeft: 6 }}>
@@ -1336,7 +1381,8 @@ export function EChecksheetPanelForm() {
                         <tr>
                           <th>Area</th>
                           <th style={{ textAlign: "center" }}>Bulan / Thn</th>
-                          <th style={{ textAlign: "center" }}>Pengisi (PIC Check)</th>
+                          <th style={{ textAlign: "center" }}>Petugas (PIC)</th>
+                          <th style={{ textAlign: "center" }}>Spv / Foreman</th>
                           <th style={{ textAlign: "center" }}>Panel Dicek</th>
                           <th style={{ textAlign: "center" }}>Temuan NG</th>
                           <th style={{ textAlign: "center" }}>% OK</th>
@@ -1373,6 +1419,9 @@ export function EChecksheetPanelForm() {
                                   <User size={12} color="#64748b" />
                                   {s.picCheck || "-"}
                                 </span>
+                              </td>
+                              <td style={{ textAlign: "center", fontSize: 12, color: "#475569" }}>
+                                {s.spvFrm || "-"}
                               </td>
                               <td style={{ textAlign: "center" }}>
                                 {s.readings.filter(isReadingFilled).length} / {s.readings.length}
@@ -1633,15 +1682,22 @@ export function EChecksheetPanelForm() {
                   </div>
 
                   <div className="p-card" style={{ padding: "14px 20px" }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
-                      <User size={14} color="#64748b" />
-                      <span style={{ fontSize: 12, fontWeight: 700, color: "#94a3b8", letterSpacing: ".06em" }}>
-                        INFORMASI INSPEKSI
-                      </span>
+                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 10, marginBottom: 12 }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                        <User size={14} color="#64748b" />
+                        <span style={{ fontSize: 12, fontWeight: 700, color: "#94a3b8", letterSpacing: ".06em" }}>
+                          INFORMASI INSPEKSI & OTORISASI
+                        </span>
+                      </div>
+                      {selArea.department && (
+                        <div style={{ fontSize: 11.5, fontWeight: 600, color: "#475569", background: "#f1f5f9", padding: "3px 10px", borderRadius: 6 }}>
+                          🏢 {selArea.department} {selArea.subArea ? `• ${selArea.subArea}` : ""}
+                        </div>
+                      )}
                     </div>
-                    <div className="foot-grid">
+                    <div className="foot-grid" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))" }}>
                       <div className="foot-field">
-                        <span className="foot-label">WAKTU & TGL. INSPEKSI (OTOMATIS)</span>
+                        <span className="foot-label">TANGGAL PENGECEKAN (TGL)</span>
                         <input
                           type="text"
                           value={tgl}
@@ -1651,14 +1707,29 @@ export function EChecksheetPanelForm() {
                         />
                       </div>
                       <div className="foot-field">
-                        <span className="foot-label">PIC CHECK / INSPEKTOR</span>
+                        <span className="foot-label">PETUGAS PEMERIKSA (PIC CHECK)</span>
                         <input
                           type="text"
                           value={picCheck}
                           readOnly
                           className="foot-input"
                           style={{ background: "#f1f5f9", cursor: "not-allowed", color: "#334155" }}
-                          placeholder="Nama inspektor..."
+                          placeholder="Nama petugas pemeriksa..."
+                        />
+                      </div>
+                      <div className="foot-field">
+                        <span className="foot-label">APPROVAL SUPERVISOR / FOREMAN (SPV / FRM)</span>
+                        <input
+                          type="text"
+                          value={spvFrm}
+                          onChange={e => setSpvFrm(e.target.value)}
+                          disabled={!isVerifiedForArea}
+                          className="foot-input"
+                          style={{
+                            background: !isVerifiedForArea ? "#f8fafc" : "#fff",
+                            cursor: !isVerifiedForArea ? "not-allowed" : "text",
+                          }}
+                          placeholder="Nama / NIK Supervisor atau Foreman..."
                         />
                       </div>
                     </div>
@@ -1889,6 +1960,50 @@ export function EChecksheetPanelForm() {
                         </span>
                       </div>
                     )}
+
+                    {/* Informasi Standar Normal Parameter Pengecekan Panel */}
+                    <div style={{
+                      margin: "16px", padding: "14px 18px",
+                      background: "#f8fafc", border: "1px solid #e2e8f0", borderRadius: 10
+                    }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
+                        <Info size={15} color="#1d4ed8" />
+                        <span style={{ fontSize: 12.5, fontWeight: 700, color: "#1e293b", letterSpacing: ".02em" }}>
+                          STANDAR PARAMETER PENGECEKAN PANEL LISTRIK (9 ITEM CHECK)
+                        </span>
+                      </div>
+                      <div style={{
+                        display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))",
+                        gap: 10, fontSize: 11.5, color: "#334155"
+                      }}>
+                        <div style={{ padding: "8px 12px", background: "#fff", borderRadius: 8, border: "1px solid #e2e8f0" }}>
+                          <span style={{ fontWeight: 700, color: "#c2410c" }}>1. Temp (°C):</span> Input numerik suhu. <b>Maksimal 65°C</b>.
+                        </div>
+                        <div style={{ padding: "8px 12px", background: "#fff", borderRadius: 8, border: "1px solid #e2e8f0" }}>
+                          <span style={{ fontWeight: 700, color: "#15803d" }}>2. Bau:</span> Pilihan (O, X, ⊗). <b>Tidak ada bau seperti benda terbakar</b>.
+                        </div>
+                        <div style={{ padding: "8px 12px", background: "#fff", borderRadius: 8, border: "1px solid #e2e8f0" }}>
+                          <span style={{ fontWeight: 700, color: "#15803d" }}>3. Suara:</span> Pilihan (O, X, ⊗). <b>Tidak ada suara mendengung</b>.
+                        </div>
+                        <div style={{ padding: "8px 12px", background: "#fff", borderRadius: 8, border: "1px solid #e2e8f0" }}>
+                          <span style={{ fontWeight: 700, color: "#15803d" }}>4. 5S:</span> Pilihan (O, X, ⊗). <b>Kondisi Panel bersih luar dan dalam</b>.
+                        </div>
+                        <div style={{ padding: "8px 12px", background: "#fff", borderRadius: 8, border: "1px solid #e2e8f0" }}>
+                          <span style={{ fontWeight: 700, color: "#1d4ed8" }}>5. Teg. Out MCCB 3 Phase:</span> Tegangan <b>380V – 415V</b>.
+                        </div>
+                        <div style={{ padding: "8px 12px", background: "#fff", borderRadius: 8, border: "1px solid #e2e8f0" }}>
+                          <span style={{ fontWeight: 700, color: "#1d4ed8" }}>6. Teg. Out MCCB 1 Phase:</span> Tegangan <b>220V – 240V</b>.
+                        </div>
+                        <div style={{ padding: "8px 12px", background: "#fff", borderRadius: 8, border: "1px solid #e2e8f0", gridColumn: "span 2" }}>
+                          <span style={{ fontWeight: 700, color: "#7e22ce" }}>7-9. Arus (A) Phase R, S, T:</span> Input numerik Ampere. <b>Menyesuaikan dengan kapasitas MCCB</b>.
+                        </div>
+                      </div>
+                      <div style={{ marginTop: 10, paddingTop: 8, borderTop: "1px dashed #cbd5e1", display: "flex", gap: 14, flexWrap: "wrap", fontSize: 11, color: "#64748b" }}>
+                        <span><b>O</b> : Kondisi OK</span>
+                        <span><b>X</b> : Kondisi tidak OK</span>
+                        <span><b>⊗</b> : Kondisi tidak OK, tapi sekarang sudah diperbaiki sehingga kondisinya OK</span>
+                      </div>
+                    </div>
                   </div>
 
                   <div className="p-card" style={{
@@ -1965,8 +2080,9 @@ export function EChecksheetPanelForm() {
                   ["Area", selArea.label],
                   ["Bulan / Tahun", `${selMonth} ${selYear}`],
                   ["Panel Diisi", `${filledCount} dari ${readings.length}`],
-                  ["Waktu Inspeksi", tgl || "—"],
-                  ["PIC Check", picCheck || "—"],
+                  ["Tanggal Pengecekan", tgl || "—"],
+                  ["Petugas Pemeriksa (PIC)", picCheck || "—"],
+                  ["Supervisor / Foreman", spvFrm || "—"],
                 ].map(([label, val]) => (
                   <div key={label} style={{
                     display: "flex", gap: 12, padding: "6px 0",
@@ -2124,6 +2240,10 @@ export function EChecksheetPanelForm() {
                 <div>
                   <div style={{ fontSize: 11, fontWeight: 700, color: "#94a3b8" }}>PIC CHECK</div>
                   <div style={{ fontSize: 13, fontWeight: 700, color: "#1e293b" }}>{viewingSession.picCheck || "-"}</div>
+                </div>
+                <div>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: "#94a3b8" }}>SUPERVISOR / FOREMAN</div>
+                  <div style={{ fontSize: 13, fontWeight: 700, color: "#1e293b" }}>{viewingSession.spvFrm || "-"}</div>
                 </div>
                 <div>
                   <div style={{ fontSize: 11, fontWeight: 700, color: "#94a3b8" }}>STATUS KELAYAKAN (% OK)</div>
@@ -2303,6 +2423,16 @@ export function EChecksheetPanelForm() {
                   </div>
                   <div style={{ fontSize: 11.5, color: "#94a3b8" }}>
                     Bulan {editingSession.month} {editingSession.year} · Pengambilan awal: {editingSession.tgl}
+                  </div>
+                  <div style={{ marginTop: 8, display: "flex", alignItems: "center", gap: 10 }}>
+                    <span style={{ fontSize: 12, fontWeight: 700, color: "#475569" }}>Spv/Foreman Approval:</span>
+                    <input
+                      type="text"
+                      defaultValue={editingSession.spvFrm || ""}
+                      id="edit-spv-input"
+                      placeholder="Nama Supervisor / Foreman..."
+                      style={{ padding: "4px 8px", fontSize: 12, border: "1px solid #cbd5e1", borderRadius: 6, width: 220 }}
+                    />
                   </div>
                 </div>
               </div>

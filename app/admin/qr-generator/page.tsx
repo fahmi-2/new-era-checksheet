@@ -152,6 +152,7 @@ const LIFT_BARANG_UNITS = [
 
 // Area Panel — sesuai AREAS config di EChecksheetPanelForm.tsx
 const PANEL_AREAS = [
+  { key: "PH-A",      label: "Power House A",            group: "A", months: "Jan, Apr, Jul, Okt" },
   { key: "GENBA-A",    label: "Genba A (SUM)",            group: "A", months: "Jan, Apr, Jul, Okt" },
   { key: "EXIM",      label: "Genba EXIM",               group: "A", months: "Jan, Apr, Jul, Okt" },
   { key: "GD-B",      label: "Gedung B",                 group: "B", months: "Feb, Mei, Agu, Nov" },

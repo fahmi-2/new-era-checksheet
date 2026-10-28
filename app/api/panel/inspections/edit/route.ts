@@ -18,6 +18,7 @@ interface PanelReadingInput {
 
 interface EditPanelData {
   id: string;
+  spvFrm?: string;
   readings: PanelReadingInput[];
 }
 
@@ -45,9 +46,9 @@ export async function PUT(request: NextRequest) {
 
     await client.query(
       `UPDATE panel_inspections
-       SET updated_at = CURRENT_TIMESTAMP, is_edited = TRUE
+       SET updated_at = CURRENT_TIMESTAMP, is_edited = TRUE, spv_frm = COALESCE($2, spv_frm)
        WHERE id = $1`,
-      [data.id]
+      [data.id, data.spvFrm || null]
     );
 
     // Delete existing readings and re-insert updated readings
